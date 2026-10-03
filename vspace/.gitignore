@@ -1,0 +1,48 @@
+# --- Secrets & local env ---
+/src/.env
+.env.docker
+.env
+.env.*
+!.env.example
+!.env.docker.example
+!src/.env.example
+
+# --- Docker runtime data ---
+/docker-data/
+
+# --- SSL (generate locally: docker/ssl/generate-certs.sh) ---
+/docker/ssl/*.pem
+/docker/ssl/*.srl
+/docker/ssl/*.csr
+/docker/ssl/*.ext
+
+# --- AI / IDE ---
+/.ai/
+/.idea/
+/.vscode/
+/.cursor/
+
+# --- Laravel / Node ---
+/src/vendor/
+/src/node_modules/
+/src/public/build/
+/src/public/hot/
+/src/storage/*.key
+/src/storage/logs/
+/src/storage/framework/cache/
+/src/storage/framework/sessions/
+/src/storage/framework/views/
+/src/bootstrap/cache/*
+!/src/bootstrap/cache/.gitignore
+
+# --- Load test (генерируется scripts/loadtest/export-loadtest-users.sh) ---
+/loadtest/credentials.jsonl
+/loadtest/user-ids.txt
+/loadtest/meta.env
+/loadtest/meta_postman.csv
+
+# --- OS / misc ---
+.DS_Store
+Thumbs.db
+*.log
+.phpunit.result.cache

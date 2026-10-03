@@ -1,0 +1,14 @@
+.idea
+.git
+.ai
+docker-data
+src/node_modules
+src/vendor
+src/storage/logs/*
+src/storage/framework/cache/*
+src/storage/framework/sessions/*
+src/storage/framework/views/*
+src/bootstrap/cache/*
+src/.env
+src/.env.*
+!src/.env.example

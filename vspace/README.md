@@ -31,7 +31,7 @@ cp .env.docker.example .env.docker
 # COMPOSE_PROJECT_NAME — имя проекта Compose (префикс контейнеров, сеть).
 # Отредактируйте пароли и при необходимости HTTP_PORT / HTTPS_PORT / COMPOSE_DATA_ROOT.
 
-# 2. Laravel: env-файл (ключ сгенерируем после старта, шаг 7)
+# 2. Laravel: env-файл (ключ сгенерируем после старта, шаг 9)
 cp src/.env.example src/.env
 
 # 3. SSL-сертификаты (локальный CA)
@@ -48,10 +48,14 @@ docker compose --env-file .env.docker run --rm --no-deps php composer install
 # 6. Сборка фронта: Vite (React) собирает тему в src/public/build
 ./scripts/frontend-build.sh   # внутри контейнера node:22, при отсутствии node_modules делает npm ci
 
-# 7. Запуск
+# 7. Права на каталоги данных (иначе Grafana uid 472 и Loki uid 10001 не смогут писать,
+#    а nginx упадёт каскадом с host not found in upstream "grafana")
+./scripts/fix-data-permissions.sh
+
+# 8. Запуск
 docker compose --env-file .env.docker up -d
 
-# 8. Ключ приложения и миграции
+# 9. Ключ приложения и миграции
 docker compose --env-file .env.docker exec php php artisan key:generate
 docker compose --env-file .env.docker exec php php artisan config:clear
 docker compose --env-file .env.docker exec php php artisan migrate

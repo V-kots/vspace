@@ -32,6 +32,8 @@ cp .env.docker.example .env.docker
 # Отредактируйте пароли и при необходимости HTTP_PORT / HTTPS_PORT / COMPOSE_DATA_ROOT.
 
 # 2. Laravel: env-файл (ключ сгенерируем после старта, шаг 7)
+#    ВАЖНО: DB_PASSWORD в src/.env должен совпадать с POSTGRES_PASSWORD в
+#    .env.docker, иначе `artisan migrate` упадёт с "password authentication failed".
 cp src/.env.example src/.env
 
 # 3. SSL-сертификаты (локальный CA)
@@ -51,11 +53,19 @@ docker compose --env-file .env.docker run --rm --no-deps php composer install
 # 7. Запуск
 docker compose --env-file .env.docker up -d
 
-# 8. Ключ приложения и миграции
+# 8. Права на каталоги данных (нужно при первом запуске)
+#    storage/bootstrap/cache — под www-data; grafana (472) и loki (10001) — под свои uid
+./scripts/fix-data-permissions.sh
+
+# 9. Ключ приложения и миграции
 docker compose --env-file .env.docker exec php php artisan key:generate
 docker compose --env-file .env.docker exec php php artisan config:clear
 docker compose --env-file .env.docker exec php php artisan migrate
 ```
+
+> **Почему нужен шаг 8.** Bind-mount `src` приходит с хоста под uid текущего пользователя, а php-fpm-воркеры работают под `www-data` — Laravel не сможет писать в `storage`/`bootstrap/cache` (ошибки `Please provide a valid cache path`, `tempnam(): file created in the system's temporary directory`). Каталоги Grafana/Loki в `docker-data` создаются Docker от `root`, а контейнеры работают под uid **472** и **10001** — без смены владельца они уходят в restart loop с `Permission denied`, а nginx падает с `host not found in upstream "grafana"`.
+
+> **Пароль PostgreSQL.** Логин/пароль/БД задаются переменными `POSTGRES_*` в `.env.docker` и применяются только при **первой** инициализации `docker-data/postgres`. Если поменять `POSTGRES_PASSWORD` после первого запуска, пароль в существующем томе не изменится — правьте тогда `DB_PASSWORD` в `src/.env` под фактический, либо пересоздайте данные: `docker compose down && sudo rm -rf docker-data/postgres && docker compose up -d`.
 
 > `run --rm --no-deps` — одноразовый контейнер php без зависимостей (nginx/postgres не запускаются).
 > Артефакты фронта попадают в `src/public/build/`, nginx отдаёт их без перезапуска (каталог `src` смонтирован).
@@ -124,11 +134,11 @@ docker compose exec php php -v | grep -i xdebug
 
 1. **Cursor / VS Code:** расширение PHP Debug, конфиг `.vscode/launch.json` → **Listen for Xdebug (vspace)** (порт **9003**), `pathMappings`: `/var/www/html` → `src`.
 2. **PhpStorm:** ошибка *«Server with name 'vspace.loc' doesn't exist»* — Xdebug уже доходит до IDE, не хватает **Servers**:
-   - **Settings → PHP → Servers** (или **Configure servers** в баннере отладчика).
-   - **+** → **Name:** `vspace.loc` (как в `PHP_IDE_CONFIG=serverName=vspace.loc`, регистр важен).
-   - **Host:** `vspace.loc`, **Port:** `443`, включить **Use path mappings**.
-   - **Absolute path on the server:** `/var/www/html` → **Absolute path on the host:** `<репо>/vspace/src` (например `/home/…/vspace/src`).
-   - **Settings → PHP → Debug:** порт **9003**, Xdebug; при необходимости **Break at first line** выключить.
+    - **Settings → PHP → Servers** (или **Configure servers** в баннере отладчика).
+    - **+** → **Name:** `vspace.loc` (как в `PHP_IDE_CONFIG=serverName=vspace.loc`, регистр важен).
+    - **Host:** `vspace.loc`, **Port:** `443`, включить **Use path mappings**.
+    - **Absolute path on the server:** `/var/www/html` → **Absolute path on the host:** `<репо>/vspace/src` (например `/home/…/vspace/src`).
+    - **Settings → PHP → Debug:** порт **9003**, Xdebug; при необходимости **Break at first line** выключить.
 3. **Web (без cookie):** в FPM **`start_with_request=yes`** — при **Listen** в IDE на **9003** отладка сама цепляется к запросу; если IDE не слушает, ~**150 ms** на попытку (`connect_timeout_ms`). Когда не отлаживаешь — **`XDEBUG_MODE=off`** в `.env.docker`.
 4. **CLI:** как web — **`start_with_request=yes`** в `99-xdebug.ini`; при **Listen** на 9003 цепляется без cookie. Без IDE — ~150 ms; иначе **`XDEBUG_MODE=off`**.
 
@@ -189,8 +199,20 @@ UI Alloy (метрики/отладка): внутри сети `http://alloy:12
 
 Если графики пустые: `docker compose ps loki alloy`, трафик на сайт, Explore `{log_type="access", vhost="vspace.loc"}`, затем `docker compose restart grafana` (подхват provisioning).
 
-**Loki и права на `docker-data/loki`:** контейнер работает от uid **10001**. Если Loki в restart loop с `permission denied` на WAL:
-`docker run --rm -u root -v "$PWD/docker-data/loki:/loki" alpine chown -R 10001:10001 /loki`
+**Loki, Grafana и права на `docker-data`:** каталоги создаются Docker от `root`, а контейнеры работают под непривилегированными uid: Loki — **10001**, Grafana — **472**. Признаки проблемы в `docker compose logs`: Loki — `mkdir /loki/rules: permission denied` (restart loop на WAL/rules), Grafana — `GF_PATHS_DATA '/var/lib/grafana' is not writable` / `mkdir: can't create directory '/var/lib/grafana/plugins': Permission denied`, nginx — `host not found in upstream "grafana"` (Grafana не поднимается и не попадает в DNS). Лечится сменой владельца:
+
+```bash
+docker run --rm -v "$PWD/docker-data:/d" alpine sh -c \
+  'chown -R 472:472 /d/grafana; chown -R 10001:10001 /d/loki'
+docker compose restart grafana loki nginx
+```
+
+Также `storage` и `bootstrap/cache` Laravel должны принадлежать `www-data` (иначе `Please provide a valid cache path` и `tempnam(): file created in the system's temporary directory`):
+
+```bash
+docker compose exec -T php sh -c \
+  'mkdir -p storage/framework/{views,cache/data,sessions} && chown -R www-data:www-data storage bootstrap/cache'
+```
 
 ### Redis: `Cannot assign requested address`
 

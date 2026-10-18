@@ -5,7 +5,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-PASSWORD="${LOADTEST_PASSWORD:-Secret123!}"
+# shellcheck source=scripts/loadtest/_lib.sh
+source "${ROOT}/scripts/loadtest/_lib.sh"
+
+PASSWORD="$(loadtest_password)"
 
 if [[ "${1:-}" != "--yes" ]]; then
   echo "Будет обновлён password у всех строк в users (bcrypt)."

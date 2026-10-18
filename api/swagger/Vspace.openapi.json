@@ -26,7 +26,7 @@
                             },
                             "example": {
                                 "id": "e4d2e6b0-cde2-42c5-aac3-0b8316f21e58",
-                                "password": "Secret123!"
+                                "password": "your-password"
                             }
                         }
                     }
@@ -84,7 +84,7 @@
                                 "gender": "male",
                                 "biography": "Путешествия, музыка",
                                 "city": "Москва",
-                                "password": "Secret123!"
+                                "password": "your-password"
                             }
                         }
                     }
@@ -204,7 +204,7 @@
                     },
                     "password": {
                         "type": "string",
-                        "example": "Secret123!"
+                        "example": "your-password"
                     }
                 }
             },
@@ -268,7 +268,7 @@
                     "password": {
                         "type": "string",
                         "minLength": 8,
-                        "example": "Secret123!"
+                        "example": "your-password"
                     }
                 }
             },

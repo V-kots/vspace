@@ -17,7 +17,7 @@ class ApiErrorExamplesTest extends TestCase
     {
         $response = $this->postJson('/login', [
             'id' => '00000000-0000-0000-0000-000000000000',
-            'password' => 'Secret123!',
+            'password' => 'your-password',
         ]);
 
         $this->assertApiError(

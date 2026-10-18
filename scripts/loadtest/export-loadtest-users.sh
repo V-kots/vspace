@@ -6,10 +6,13 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 OUT_DIR="${ROOT}/loadtest"
-PASSWORD="${LOADTEST_PASSWORD:-Secret123!}"
 TARGET_COUNT="${LOADTEST_USER_COUNT:-5000}"
 LIMIT="${LOADTEST_LIMIT:-$TARGET_COUNT}"
 BASE_URL="${LOADTEST_BASE_URL:-https://vspace.loc}"
+
+# shellcheck source=scripts/loadtest/_lib.sh
+source "${ROOT}/scripts/loadtest/_lib.sh"
+PASSWORD="$(loadtest_password)"
 
 mkdir -p "$OUT_DIR"
 

@@ -6,14 +6,15 @@
 
 ## 1. Подготовка (один раз)
 
-Пароли в БД после ручной регистрации разные. Для **login** нужен общий пароль:
+Пароли в БД после ручной регистрации разные. Для **login** нужен общий пароль. Пароль **не хранится в репозитории** — задайте его локально через `LOADTEST_PASSWORD` или файл `loadtest/meta.env` (он в `.gitignore`):
 
 ```bash
 cd /path/to/vspace
 chmod +x scripts/loadtest/prepare-loadtest-passwords.sh scripts/loadtest/export-loadtest-users.sh
 
-./scripts/loadtest/prepare-loadtest-passwords.sh --yes   # LOADTEST_PASSWORD=Secret123! по умолчанию
-./scripts/loadtest/export-loadtest-users.sh              # ensure 5000 users + export
+export LOADTEST_PASSWORD='<локальный-пароль>'              # либо строка в loadtest/meta.env
+./scripts/loadtest/prepare-loadtest-passwords.sh --yes     # выставит пароль всем users
+./scripts/loadtest/export-loadtest-users.sh                # ensure 5000 users + export
 ```
 
 Файлы:
@@ -73,7 +74,7 @@ Login — один пользователь (hey не ротирует body бе
 ```bash
 read -r ID < <(head -n 1 loadtest/user-ids.txt)
 hey -z 30s -c 30 -m POST -T application/json \
-  -d "{\"id\":\"${ID}\",\"password\":\"Secret123!\"}" \
+  -d "{\"id\":\"${ID}\",\"password\":\"${LOADTEST_PASSWORD}\"}" \
   "${BASE_URL}/login"
 ```
 

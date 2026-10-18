@@ -6,7 +6,10 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 TARGET="${LOADTEST_USER_COUNT:-5000}"
-PASSWORD="${LOADTEST_PASSWORD:-Secret123!}"
+
+# shellcheck source=scripts/loadtest/_lib.sh
+source "${ROOT}/scripts/loadtest/_lib.sh"
+PASSWORD="$(loadtest_password)"
 
 if [[ ! "$TARGET" =~ ^[0-9]+$ ]] || [[ "$TARGET" -lt 1 ]]; then
   echo "LOADTEST_USER_COUNT должен быть положительным числом, сейчас: ${TARGET}" >&2

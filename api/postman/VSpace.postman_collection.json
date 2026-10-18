@@ -31,7 +31,7 @@
         },
         {
             "key": "password",
-            "value": "Secret123!"
+            "value": "your-password"
         }
     ],
     "item": [
@@ -54,7 +54,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"first_name\": \"{{registerFirstName}}\",\n  \"second_name\": \"{{registerSecondName}}\",\n  \"birthdate\": \"1995-05-12\",\n  \"email\": \"{{registerEmail}}\",\n  \"gender\": \"male\",\n  \"biography\": \"Путешествия, музыка\",\n  \"city\": \"Москва\",\n  \"password\": \"Secret123!\"\n}"
+                            "raw": "{\n  \"first_name\": \"{{registerFirstName}}\",\n  \"second_name\": \"{{registerSecondName}}\",\n  \"birthdate\": \"1995-05-12\",\n  \"email\": \"{{registerEmail}}\",\n  \"gender\": \"male\",\n  \"biography\": \"Путешествия, музыка\",\n  \"city\": \"Москва\",\n  \"password\": \"your-password\"\n}"
                         },
                         "url": "{{baseUrl}}/user/register",
                         "description": "Регистрация пользователя. Ответ 200: `{ \"user_id\": \"<uuid>\" }`."
@@ -242,7 +242,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"id\": \"00000000-0000-0000-0000-000000000000\",\n  \"password\": \"Secret123!\"\n}"
+                            "raw": "{\n  \"id\": \"00000000-0000-0000-0000-000000000000\",\n  \"password\": \"your-password\"\n}"
                         },
                         "url": "{{baseUrl}}/login"
                     }

@@ -31,12 +31,13 @@ cp .env.docker.example .env.docker
 # COMPOSE_PROJECT_NAME — имя проекта Compose (префикс контейнеров, сеть).
 # Отредактируйте пароли и при необходимости HTTP_PORT / HTTPS_PORT / COMPOSE_DATA_ROOT.
 
-# 2. Laravel: env-файл (ключ сгенерируем после старта, шаг 7)
+# 2. Laravel: env-файл (ключ сгенерируем после старта, шаг 8)
 #    ВАЖНО: DB_PASSWORD в src/.env должен совпадать с POSTGRES_PASSWORD в
 #    .env.docker, иначе `artisan migrate` упадёт с "password authentication failed".
 cp src/.env.example src/.env
 
-# 3. SSL-сертификаты (локальный CA)
+# 3. SSL-сертификаты (локальный CA) — необязательно
+#    Если пропустить, nginx сгенерирует самоподписанный сертификат на старте.
 ./docker/ssl/generate-certs.sh
 ./docker/ssl/install-ca.sh   # доверие CA в системе и Chrome
 
@@ -50,20 +51,18 @@ docker compose --env-file .env.docker run --rm --no-deps php composer install
 # 6. Сборка фронта: Vite (React) собирает тему в src/public/build
 ./scripts/frontend-build.sh   # внутри контейнера node:22, при отсутствии node_modules делает npm ci
 
-# 7. Запуск
+# 7. Запуск (права на каталоги данных применяются автоматически)
 docker compose --env-file .env.docker up -d
 
-# 8. Права на каталоги данных (нужно при первом запуске)
-#    storage/bootstrap/cache — под www-data; grafana (472) и loki (10001) — под свои uid
-./scripts/fix-data-permissions.sh
-
-# 9. Ключ приложения и миграции
+# 8. Ключ приложения и миграции
 docker compose --env-file .env.docker exec php php artisan key:generate
 docker compose --env-file .env.docker exec php php artisan config:clear
 docker compose --env-file .env.docker exec php php artisan migrate
 ```
 
-> **Почему нужен шаг 8.** Bind-mount `src` приходит с хоста под uid текущего пользователя, а php-fpm-воркеры работают под `www-data` — Laravel не сможет писать в `storage`/`bootstrap/cache` (ошибки `Please provide a valid cache path`, `tempnam(): file created in the system's temporary directory`). Каталоги Grafana/Loki в `docker-data` создаются Docker от `root`, а контейнеры работают под uid **472** и **10001** — без смены владельца они уходят в restart loop с `Permission denied`, а nginx падает с `host not found in upstream "grafana"`.
+> **Права на каталоги данных** (`storage`, `bootstrap/cache`, `docker-data/grafana`, `docker-data/loki`) выставляются автоматически: php-контейнер делает `chown` для `www-data` в entrypoint, а одноразовый сервис `init-data` — для Grafana (uid **472**) и Loki (uid **10001**). Ручной скрипт `./scripts/fix-data-permissions.sh` остаётся для починки существующей инсталляции.
+>
+> **TLS.** Если `docker/ssl/${VSPACE_DOMAIN}.pem` есть — nginx использует его. Если нет, контейнер генерирует самоподписанный сертификат на старте (`docker/nginx/docker-entrypoint.d/05-generate-site-cert.sh`), поэтому свежая копия проекта поднимается без ошибки `cannot load certificate ... no start line`.
 
 > **Пароль PostgreSQL.** Логин/пароль/БД задаются переменными `POSTGRES_*` в `.env.docker` и применяются только при **первой** инициализации `docker-data/postgres`. Если поменять `POSTGRES_PASSWORD` после первого запуска, пароль в существующем томе не изменится — правьте тогда `DB_PASSWORD` в `src/.env` под фактический, либо пересоздайте данные: `docker compose down && sudo rm -rf docker-data/postgres && docker compose up -d`.
 
@@ -199,19 +198,18 @@ UI Alloy (метрики/отладка): внутри сети `http://alloy:12
 
 Если графики пустые: `docker compose ps loki alloy`, трафик на сайт, Explore `{log_type="access", vhost="vspace.loc"}`, затем `docker compose restart grafana` (подхват provisioning).
 
-**Loki, Grafana и права на `docker-data`:** каталоги создаются Docker от `root`, а контейнеры работают под непривилегированными uid: Loki — **10001**, Grafana — **472**. Признаки проблемы в `docker compose logs`: Loki — `mkdir /loki/rules: permission denied` (restart loop на WAL/rules), Grafana — `GF_PATHS_DATA '/var/lib/grafana' is not writable` / `mkdir: can't create directory '/var/lib/grafana/plugins': Permission denied`, nginx — `host not found in upstream "grafana"` (Grafana не поднимается и не попадает в DNS). Лечится сменой владельца:
+**Loki, Grafana и права на `docker-data`:** каталоги создаются Docker от `root`, а контейнеры работают под непривилегированными uid: Loki — **10001**, Grafana — **472**. Признаки проблемы в `docker compose logs`: Loki — `mkdir /loki/rules: permission denied` (restart loop на WAL/rules), Grafana — `GF_PATHS_DATA '/var/lib/grafana' is not writable` / `mkdir: can't create directory '/var/lib/grafana/plugins': Permission denied`, nginx — `host not found in upstream "grafana"` (Grafana не поднимается и не попадает в DNS). Сейчас права выставляются автоматически (php-entrypoint + сервис `init-data`); для починки существующей инсталляции:
 
 ```bash
-docker run --rm -v "$PWD/docker-data:/d" alpine sh -c \
-  'chown -R 472:472 /d/grafana; chown -R 10001:10001 /d/loki'
+./scripts/fix-data-permissions.sh
 docker compose restart grafana loki nginx
 ```
 
-Также `storage` и `bootstrap/cache` Laravel должны принадлежать `www-data` (иначе `Please provide a valid cache path` и `tempnam(): file created in the system's temporary directory`):
+`storage` и `bootstrap/cache` Laravel также чинятся автоматически в entrypoint php-контейнера. Вручную, при необходимости:
 
 ```bash
 docker compose exec -T php sh -c \
-  'mkdir -p storage/framework/{views,cache/data,sessions} && chown -R www-data:www-data storage bootstrap/cache'
+  'mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions && chown -R www-data:www-data storage bootstrap/cache'
 ```
 
 ### Redis: `Cannot assign requested address`

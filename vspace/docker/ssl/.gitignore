@@ -1,6 +1,0 @@
-ca-key.pem
-ca.srl
-*.csr
-*.ext
-*-leaf.pem
-vspace.loc-key.pem

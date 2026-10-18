@@ -67,7 +67,7 @@ COMPOSE=(docker compose --env-file "$ENV_FILE" -f "${ROOT}/docker-compose.yml")
 if [[ -n "$("${COMPOSE[@]}" ps -q php 2>/dev/null)" ]]; then
     echo "→ chown src/storage, src/bootstrap/cache → www-data"
     "${COMPOSE[@]}" exec -T php sh -c \
-        'mkdir -p storage/framework/{views,cache/data,sessions} && chown -R www-data:www-data storage bootstrap/cache'
+        'mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions && chown -R www-data:www-data storage bootstrap/cache'
 else
     echo "→ php-контейнер не запущен, пропускаю права storage/bootstrap/cache (запустите после 'up -d')"
 fi

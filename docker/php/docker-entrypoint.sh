@@ -1,6 +1,21 @@
 #!/bin/sh
 set -e
 
+# Bind-mount ./src приходит с хоста под uid пользователя, а php-fpm-воркеры
+# работают под www-data. Гарантируем запись в storage и bootstrap/cache, чтобы
+# свежая копия проекта работала без ручного chown.
+mkdir -p /var/www/html/storage/framework/views \
+    /var/www/html/storage/framework/cache/data \
+    /var/www/html/storage/framework/sessions \
+    /var/www/html/storage/logs
+for dir in /var/www/html/storage /var/www/html/bootstrap/cache; do
+    [ -e "$dir" ] || continue
+    owner="$(stat -c '%U' "$dir" 2>/dev/null || echo '')"
+    if [ "$owner" != "www-data" ]; then
+        chown -R www-data:www-data "$dir" || true
+    fi
+done
+
 validate="${PHP_OPCACHE_VALIDATE_TIMESTAMPS:-0}"
 jit="${PHP_OPCACHE_JIT:-1255}"
 preload="${PHP_OPCACHE_PRELOAD:-1}"

@@ -1,2 +1,0 @@
-# Устарело: сбор логов перенесён на Grafana Alloy (docker/alloy/config.alloy).
-# Файл оставлен для сравнения при миграции; сервис promtail удалён из docker-compose.yml.

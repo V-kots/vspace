@@ -10,6 +10,9 @@
 # --- Docker runtime data ---
 /docker-data/
 
+# --- Вложенная копия проекта (не часть репозитория) ---
+/vspace/
+
 # --- SSL (generate locally: docker/ssl/generate-certs.sh) ---
 /docker/ssl/*.pem
 /docker/ssl/*.srl

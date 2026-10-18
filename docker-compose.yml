@@ -5,20 +5,28 @@ name: ${COMPOSE_PROJECT_NAME:-vspace}
 
 services:
   nginx:
-    image: nginx:1.31.6-alpine
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    image: ${COMPOSE_PROJECT_NAME:-vspace}-nginx:local
     restart: unless-stopped
     expose:
       - "8080"
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
+    environment:
+      VSPACE_DOMAIN: ${VSPACE_DOMAIN:-vspace.loc}
+      GRAFANA_DOMAIN: ${GRAFANA_DOMAIN:-grafana.vspace.loc}
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-mail.vspace.loc}
     volumes:
       - ./src:/var/www/html:ro
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
       - ${COMPOSE_DATA_ROOT:-./docker-data}/nginx-logs:/var/log/nginx
-      - ./docker/ssl/${VSPACE_DOMAIN:-vspace.loc}.pem:/etc/nginx/ssl/site.pem:ro
-      - ./docker/ssl/${VSPACE_DOMAIN:-vspace.loc}-key.pem:/etc/nginx/ssl/site-key.pem:ro
+      # Сертификат из docker/ssl используется, если есть; иначе контейнер
+      # генерирует самоподписанный на старте (см. docker/nginx/docker-entrypoint.d).
+      - ./docker/ssl:/etc/nginx/ssl-host:ro
     depends_on:
       php:
         condition: service_started
@@ -116,6 +124,9 @@ services:
     volumes:
       - ./docker/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
       - ${COMPOSE_DATA_ROOT:-./docker-data}/loki:/loki
+    depends_on:
+      init-data:
+        condition: service_completed_successfully
     networks:
       - app
 
@@ -167,7 +178,29 @@ services:
       - ${COMPOSE_DATA_ROOT:-./docker-data}/grafana:/var/lib/grafana
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
-      - loki
+      init-data:
+        condition: service_completed_successfully
+      loki:
+        condition: service_started
+    networks:
+      - app
+
+  # One-shot: bind-mount каталоги данных создаются Docker от root, а Grafana
+  # пишет под uid 472, Loki — под 10001. Без chown они уходят в restart loop с
+  # Permission denied, а nginx падает с `host not found in upstream "grafana"`.
+  # Гарантирует корректные права в любой копии проекта.
+  init-data:
+    image: alpine:3.21
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - >-
+        mkdir -p /data/grafana /data/loki /data/nginx-logs &&
+        chown -R 472:472 /data/grafana &&
+        chown -R 10001:10001 /data/loki
+    volumes:
+      - ${COMPOSE_DATA_ROOT:-./docker-data}:/data
     networks:
       - app
 

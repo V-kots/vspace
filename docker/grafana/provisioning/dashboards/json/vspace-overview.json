@@ -1,0 +1,881 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "Explore — access (vspace.loc)",
+      "type": "link",
+      "url": "/explore?orgId=1&panes=%7B%22v1%22%3A%7B%22datasource%22%3A%22loki%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22%7Blog_type%3D%5C%22access%5C%22%2C%20service%3D%5C%22nginx%5C%22%2C%20vhost%3D%5C%22vspace.loc%5C%22%7D%22%2C%22queryType%22%3A%22range%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D%7D",
+      "icon": "search"
+    },
+    {
+      "title": "Explore — app logs",
+      "type": "link",
+      "url": "/explore?orgId=1&panes=%7B%22v1%22%3A%7B%22datasource%22%3A%22loki%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22%7Blog_type%3D%5C%22app%5C%22%7D%20%7C%20json%22%2C%22queryType%22%3A%22range%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D%7D",
+      "icon": "search"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "vspace",
+    "loki"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": ".*",
+          "value": ".*"
+        },
+        "hide": 0,
+        "label": "request_id",
+        "name": "request_id",
+        "options": [
+          {
+            "selected": true,
+            "text": ".*",
+            "value": ".*"
+          }
+        ],
+        "query": ".*",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "timezone": "browser",
+  "title": "VSpace",
+  "uid": "vspace-overview",
+  "version": 17,
+  "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "Мониторинг **VSpace** по **Loki** (Alloy → access/app логи). Prometheus в compose отключён.\n\nПеременная **`request_id`** (внизу) фильтрует log-панели; `.*` — все строки.",
+        "mode": "markdown"
+      },
+      "title": "VSpace",
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 3
+      },
+      "id": 200,
+      "panels": [],
+      "title": "Nginx (vspace.loc)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 3,
+          "min": 0,
+          "custom": {
+            "axisBorderShow": true,
+            "axisLabel": "req/s",
+            "axisPlacement": "left",
+            "axisSoftMin": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "499/s (client closed)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "504/s (gateway timeout)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 19,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(rate({log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\", status=~\"4..\"}[1m]))",
+          "legendFormat": "4xx/s",
+          "refId": "A",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(rate({log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\", status=\"499\"}[1m]))",
+          "legendFormat": "499/s (client closed)",
+          "refId": "B",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(rate({log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\", status=\"502\"}[1m]))",
+          "legendFormat": "502/s",
+          "refId": "C",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(rate({log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\", status=\"504\"}[1m]))",
+          "legendFormat": "504/s (gateway timeout)",
+          "refId": "D",
+          "queryType": "range"
+        }
+      ],
+      "title": "Nginx — 4xx / 499 / 502 / 504 (vspace.loc)",
+      "description": "Loki (access labels). Серия 4xx/s включает 499; отдельная 499/s — для наглядности. 499 часто от ab/браузера; 504 — fastcgi_read_timeout 60s.",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "id": 201,
+      "panels": [],
+      "title": "Приложение (Laravel)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 3,
+          "min": 0,
+          "custom": {
+            "axisBorderShow": true,
+            "axisLabel": "lines/s",
+            "axisPlacement": "left",
+            "axisSoftMin": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(rate({log_type=\"app\", level=~\"ERROR|CRITICAL|ALERT|EMERGENCY\"}[1m]))",
+          "legendFormat": "errors/s",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "title": "Errors — Laravel (level)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "custom": {
+            "axisBorderShow": true,
+            "axisLabel": "за 1 мин",
+            "axisPlacement": "left",
+            "axisSoftMin": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "id": 24,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(count_over_time({log_type=\"app\", level=~\"ERROR|CRITICAL|ALERT|EMERGENCY\"}[1m]))",
+          "legendFormat": "errors / 1m",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "title": "Errors — Laravel (level) — за 1 мин",
+      "description": "Строки лога ERROR+ за скользящую минуту. Над графиком — rate (errors/s).",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 202,
+      "panels": [],
+      "title": "Latency и нагрузка",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 21
+      },
+      "id": 30,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.50, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"}  | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "p50",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Nginx — request_time p50",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 21
+      },
+      "id": 31,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.90, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"}  | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "p90",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Nginx — request_time p90",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 21
+      },
+      "id": 32,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.99, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"}  | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "p99",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Nginx — request_time p99",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 29
+      },
+      "id": 40,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.50, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"} |~ `\"POST /login HTTP` | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "POST /login",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.50, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"} |~ `\"GET /user/get/` | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "GET /user/get/{id}",
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.50, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"} |~ `\"POST /user/register HTTP` | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "POST /user/register",
+          "queryType": "range",
+          "refId": "C"
+        }
+      ],
+      "title": "Latency by endpoint — p50",
+      "type": "timeseries",
+      "description": "Префикс URI (без query string и UUID в path)."
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 8,
+        "y": 29
+      },
+      "id": 41,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.90, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"} |~ `\"POST /login HTTP` | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "POST /login",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.90, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"} |~ `\"GET /user/get/` | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "GET /user/get/{id}",
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.90, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"} |~ `\"POST /user/register HTTP` | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "POST /user/register",
+          "queryType": "range",
+          "refId": "C"
+        }
+      ],
+      "title": "Latency by endpoint — p90",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 29
+      },
+      "id": 42,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.99, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"} |~ `\"POST /login HTTP` | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "POST /login",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.99, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"} |~ `\"GET /user/get/` | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "GET /user/get/{id}",
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max without (status, __stream_shard__) (quantile_over_time(0.99, {log_type=\"access\", service=\"nginx\", vhost=\"vspace.loc\"} |~ `\"POST /user/register HTTP` | regexp `rt=(?P<rt>[0-9.]+)$` | unwrap rt [5m]))",
+          "legendFormat": "POST /user/register",
+          "queryType": "range",
+          "refId": "C"
+        }
+      ],
+      "title": "Latency by endpoint — p99",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "id": 203,
+      "panels": [],
+      "title": "Логи",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
+      "id": 15,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "{log_type=\"app\", level=~\"ERROR|CRITICAL|WARNING\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Application logs — errors & warnings",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 53
+      },
+      "id": 17,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "{log_type=\"app\"} | json | request_id=~\"$request_id\" | line_format \"{{.request_id}} {{.level_name}} {{.message}}\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Application logs — parsed (request_id, level, message)",
+      "description": "Переменная request_id: полный UUID или regex (по умолчанию .* — все).",
+      "type": "logs"
+    }
+  ]
+}

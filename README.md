@@ -82,7 +82,6 @@ docker compose --env-file .env.docker exec php php artisan migrate
 
 ### Тестовые маршруты
 
-- `GET /log-test` — пишет строку в лог (видна в Loki/Grafana)
 - `GET /mail-test` — отправляет письмо в Mailpit
 
 ## Структура проекта
@@ -187,7 +186,8 @@ Prometheus и экспортеры в compose **отключены**. Дашбо
 
 В Grafana (**Dashboards → VSpace**):
 
-- **VSpace** (uid `vspace-overview`) — nginx 4xx/499/502/504, Laravel errors, latency **p50 / p90 / p99** (общая и по endpoint), log-панели; переменная **`request_id`** для фильтра логов.
+- **VSpace** (uid `vspace-overview`) — nginx 4xx/499/502/504, **total RPS**, **RPS по эндпоинтам** (график top-10 и таблица за период), Laravel errors, latency **p50 / p90 / p99** (общая и по endpoint), log-панели; переменная **`request_id`** для фильтра логов.
+  - RPS по эндпоинтам считается из nginx access-лога (`vhost=vspace.loc`): путь нормализуется — UUID и path-параметры (`/user/get/<id>`, `/profile/<id>`) заменяются на `{id}`, статика (`/build`, `/favicon.ico`, `/robots.txt`) и `/log-test` исключены.
 - **Grafana auth:** `GF_AUTH_ANONYMOUS_ENABLED=false`, пароль из `.env.docker` (`GRAFANA_ADMIN_PASSWORD`).
 
 Alloy не шлёт в Loki docker-логи loki/alloy; nginx access — из `access.log`. Конфиг: `docker/alloy/config.alloy`; фильтр compose-проекта (`regex: vspace`) должен совпадать с `COMPOSE_PROJECT_NAME`.
@@ -264,7 +264,7 @@ docker compose ps php
 
 У сервиса **`php` нет `container_name`** — иначе `--scale` не работает. Nginx ходит в **`php:9000`** через Docker DNS (переменный `fastcgi_pass`, резолвер `127.0.0.11`). Очередь на FPM: **`fastcgi_connect_timeout 60s`** (nginx ждёт свободный воркер), **`listen.backlog = 2048`** на сокете FPM; после выдачи воркеру — **`fastcgi_read_timeout 60s`**, **`request_terminate_timeout = 60s`**.
 
-Маршрут **`/log-test`** специально делает `sleep(1)` — это ~1 с удержания воркера FPM на запрос. Параллелизм:
+Параллелизм:
 
 `реплики × pm.max_children` (по умолчанию **3 × 50 = 150** одновременных запросов).
 
@@ -272,9 +272,9 @@ docker compose ps php
 
 Рекомендации:
 
-- `-c` не выше суммарного числа FPM-воркеров (или снижайте `sleep` в `web.php` для throughput-теста);
+- `-c` не выше суммарного числа FPM-воркеров (или снижайте нагрузку на запрос для throughput-теста);
 - для HTTPS лучше **`hey`** / **`wrk`**, либо HTTP на :80 (редирект) / тест из контейнера без TLS;
-- **`ab -k` и keepalive_requests**: nginx по умолчанию закрывает соединение после **1000** запросов на одном keep-alive; `ab` считает это failed/reset. В `nginx.conf` стоит **`keepalive_requests 0`** (без лимита). При `-c 1 -n 100000` на `/log-test` с `sleep(1)` прогон займёт ~28 ч — используйте `-c 150` и разумное `-n`;
+- **`ab -k` и keepalive_requests**: nginx по умолчанию закрывает соединение после **1000** запросов на одном keep-alive; `ab` считает это failed/reset. В `nginx.conf` стоит **`keepalive_requests 0`** (без лимита). При `-c 1 -n 100000` прогон может занять очень долго — используйте `-c 150` и разумное `-n`;
 - смотреть `docker compose logs nginx`, access log (499/502/504).
 
 ## Сборка фронта (Vite / React)

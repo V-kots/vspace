@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { setAuthToken } from '../api/client';
 import AppShell from '../components/AppShell';
+import UserSearchForm from '../components/UserSearchForm';
 
 export default function Cabinet() {
     const navigate = useNavigate();
@@ -33,7 +34,9 @@ export default function Cabinet() {
     return (
         <AppShell userId={userId}>
             <div className="feed-search desktop-only">
-                <input type="search" className="search-input" placeholder="Поиск людей, сообществ..." aria-label="Поиск" />
+                <UserSearchForm
+                    onSubmit={(first, last) => navigate(`/search?first_name=${encodeURIComponent(first)}&last_name=${encodeURIComponent(last)}`)}
+                />
             </div>
 
             {/* <div className="composer panel">

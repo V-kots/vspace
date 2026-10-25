@@ -6,6 +6,7 @@ import { setAuthToken } from '../api/client';
 function mainNav(profilePath) {
     return [
         { to: '/cabinet', label: 'Главная', icon: 'home' },
+        { to: '/search', label: 'Поиск', icon: 'search' },
         { to: profilePath, label: 'Профиль', icon: 'profile' },
         // { to: '/cabinet', label: 'Лента', icon: 'feed', end: false },
         // { to: '/cabinet', label: 'Сообщения', icon: 'messages', badge: 3 },
@@ -17,6 +18,7 @@ function mainNav(profilePath) {
 function drawerNav(profilePath) {
     return [
         { to: '/cabinet', label: 'Главная', icon: 'home' },
+        { to: '/search', label: 'Поиск', icon: 'search' },
         { to: profilePath, label: 'Профиль', icon: 'profile' },
         // { to: '/cabinet', label: 'Друзья', icon: 'friends' },
         // { to: '/cabinet', label: 'Сообщества', icon: 'groups' },
@@ -105,7 +107,7 @@ export default function AppShell({ userId, children, variant = 'default' }) {
                         <Logo size="sm" to="/cabinet" />
                     </div>
                     <div className="topbar-actions">
-                        <button type="button" className="icon-btn" aria-label="Поиск">
+                        <button type="button" className="icon-btn" aria-label="Поиск" onClick={() => navigate('/search')}>
                             <NavIcon name="search" />
                         </button>
                         <button type="button" className="icon-btn" aria-label="Уведомления">

@@ -81,6 +81,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
     volumes:
       - ${COMPOSE_DATA_ROOT:-./docker-data}/postgres:/var/lib/postgresql/data
+      - ./src/database/seeders/csv:/import:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vspace} -d ${POSTGRES_DB:-vspace}"]
       interval: 10s

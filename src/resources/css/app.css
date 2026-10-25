@@ -745,6 +745,124 @@ textarea.input-invalid:focus {
     background: var(--surface);
 }
 
+/* ——— User search ——— */
+.user-search-form {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.user-search-form .search-input {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.user-search-form .btn {
+    flex: 0 0 auto;
+    border-radius: 999px;
+}
+
+.search-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+}
+
+.search-panel .section-title {
+    margin-bottom: 0;
+}
+
+.search-hint {
+    margin: 0 0 0.5rem;
+    font-size: 0.875rem;
+}
+
+.search-results-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.search-count {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.search-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.search-result {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.search-result:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.search-result-avatar {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: var(--gradient);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    flex: 0 0 auto;
+}
+
+.search-result-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.search-result-name {
+    font-weight: 600;
+}
+
+.search-result-meta {
+    font-size: 0.8125rem;
+}
+
+.search-result-bio {
+    font-size: 0.875rem;
+    color: var(--text-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.search-empty {
+    text-align: center;
+}
+
+@media (max-width: 640px) {
+    .user-search-form {
+        flex-wrap: wrap;
+    }
+
+    .user-search-form .btn {
+        width: 100%;
+    }
+}
+
 .composer {
     display: grid;
     grid-template-columns: auto 1fr;

@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "VSpace API",
-        "description": "Коллекция для трёх реализованных endpoints.\n\nСпецификация: `api/swagger/openapi.json`\n\nПорядок проверки:\n1. POST /user/register → сохраняется `userId`\n2. POST /login — в **body** JSON: `id` + `password` → сохраняется `token`\n3. GET /user/get/{id} — в **header** `Authorization: Bearer {{token}}`, в path `{{userId}}`\n\nПеред register в Pre-request генерируются уникальные `registerFirstName`, `registerSecondName`, `registerEmail`. Также: `userId`, `token`.",
+        "description": "Коллекция для реализованных endpoints.\n\nСпецификация: `api/swagger/Vspace.openapi.json` (полное ТЗ — `api/swagger/openapi.json`).\n\nПорядок проверки:\n1. POST /user/register → сохраняется `userId`\n2. POST /login — в **body** JSON: `id` + `password` → сохраняется `token`\n3. GET /user/get/{id} — в **header** `Authorization: Bearer {{token}}`, в path `{{userId}}`\n4. GET /user/search — query `first_name` + `last_name` (префиксы), в header `Authorization: Bearer {{token}}`, сортировка по id\n\nПеред register в Pre-request генерируются уникальные `registerFirstName`, `registerSecondName`, `registerEmail`. Перед search из них вычисляются префиксы `searchFirstName`, `searchLastName`. Также: `userId`, `token`.\n\nНагрузочный тест поиска:\n- «Нагрузочный тест: подготовка» — 1 итерация, создаёт пользователя и сохраняет `loadToken`;\n- «Нагрузочный тест: нагрузка» — N итераций GET /user/search с Bearer-токеном.\n\nNewman:\ncp api/postman/VSpace.postman_environment.json /tmp/vspace-load-env.json\nnewman run api/postman/VSpace.postman_collection.json -e /tmp/vspace-load-env.json --folder \"Нагрузочный тест: подготовка\" --iteration-count 1 --insecure --export-environment /tmp/vspace-load-env.json\nnewman run api/postman/VSpace.postman_collection.json -e /tmp/vspace-load-env.json --folder \"Нагрузочный тест: нагрузка\" --iteration-count 1000 --insecure",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -32,6 +32,42 @@
         {
             "key": "password",
             "value": "your-password"
+        },
+        {
+            "key": "searchFirstName",
+            "value": ""
+        },
+        {
+            "key": "searchLastName",
+            "value": ""
+        },
+        {
+            "key": "loadUserId",
+            "value": ""
+        },
+        {
+            "key": "loadToken",
+            "value": ""
+        },
+        {
+            "key": "loadRegisterFirstName",
+            "value": ""
+        },
+        {
+            "key": "loadRegisterSecondName",
+            "value": ""
+        },
+        {
+            "key": "loadRegisterEmail",
+            "value": ""
+        },
+        {
+            "key": "loadFirstName",
+            "value": ""
+        },
+        {
+            "key": "loadLastName",
+            "value": ""
         }
     ],
     "item": [
@@ -220,6 +256,96 @@
                             }
                         }
                     ]
+                },
+                {
+                    "name": "GET /user/search",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/user/search?first_name={{searchFirstName}}&last_name={{searchLastName}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "user",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "first_name",
+                                    "value": "{{searchFirstName}}",
+                                    "description": "Префикс имени"
+                                },
+                                {
+                                    "key": "last_name",
+                                    "value": "{{searchLastName}}",
+                                    "description": "Префикс фамилии"
+                                }
+                            ]
+                        },
+                        "description": "Поиск анкет по префиксу имени и фамилии одновременно. Результат — массив User, отсортированный по id. Используется пользователь, созданный в POST /user/register."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const first = pm.collectionVariables.get('registerFirstName');",
+                                    "const second = pm.collectionVariables.get('registerSecondName');",
+                                    "if (!first || !second) {",
+                                    "    throw new Error('Сначала выполните POST /user/register');",
+                                    "}",
+                                    "pm.collectionVariables.set('searchFirstName', first.slice(0, 4));",
+                                    "pm.collectionVariables.set('searchLastName', second.slice(0, 3));"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Authorization Bearer header sent', function () {",
+                                    "    const auth = pm.request.headers.get('Authorization');",
+                                    "    pm.expect(auth).to.match(/^Bearer .+/);",
+                                    "    pm.expect(auth).to.include(pm.variables.get('token'));",
+                                    "});",
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Contains registered user', function () {",
+                                    "    const userId = pm.collectionVariables.get('userId');",
+                                    "    pm.expect(json.some((user) => user.id === userId)).to.be.true;",
+                                    "});",
+                                    "pm.test('Sorted by id ascending', function () {",
+                                    "    const ids = json.map((user) => user.id);",
+                                    "    pm.expect(ids).to.eql([...ids].sort());",
+                                    "});",
+                                    "pm.test('No private fields', function () {",
+                                    "    json.forEach((user) => {",
+                                    "        pm.expect(user).to.not.have.property('password');",
+                                    "        pm.expect(user).to.not.have.property('email');",
+                                    "    });",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
                 }
             ]
         },
@@ -293,6 +419,276 @@
                         ],
                         "url": "{{baseUrl}}/user/get/not-a-uuid"
                     }
+                },
+                {
+                    "name": "GET /user/search — 400 без параметров",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/user/search"
+                    }
+                },
+                {
+                    "name": "GET /user/search — 200 пустой результат",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/user/search?first_name=zzzzzz&last_name=zzzzzz",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "user",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "first_name",
+                                    "value": "zzzzzz"
+                                },
+                                {
+                                    "key": "last_name",
+                                    "value": "zzzzzz"
+                                }
+                            ]
+                        },
+                        "description": "Если совпадений нет, возвращается 200 и пустой массив."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Empty array', function () {",
+                                    "    pm.expect(pm.response.json()).to.eql([]);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Нагрузочный тест: подготовка",
+            "item": [
+                {
+                    "name": "POST /user/register (уникальный пользователь)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"first_name\": \"{{loadRegisterFirstName}}\",\n  \"second_name\": \"{{loadRegisterSecondName}}\",\n  \"birthdate\": \"1995-05-12\",\n  \"email\": \"{{loadRegisterEmail}}\",\n  \"gender\": \"other\",\n  \"biography\": \"Нагрузочный тест\",\n  \"city\": \"Москва\",\n  \"password\": \"{{password}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/user/register"
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);",
+                                    "const letters = 'абвгдежзийклмнопрстуфхцчшщ';",
+                                    "let tag = '';",
+                                    "for (let i = 0; i < 6; i++) {",
+                                    "    tag += letters.charAt((stamp.charCodeAt(i % stamp.length) + i) % letters.length);",
+                                    "}",
+                                    "pm.collectionVariables.set('loadRegisterFirstName', 'Имя' + tag);",
+                                    "pm.collectionVariables.set('loadRegisterSecondName', 'Фам' + tag);",
+                                    "pm.collectionVariables.set('loadRegisterEmail', `load+${stamp}@vspace.loc`);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Has user_id', function () {",
+                                    "    pm.expect(json.user_id).to.be.a('string');",
+                                    "});",
+                                    "pm.collectionVariables.set('loadUserId', json.user_id);",
+                                    "pm.environment.set('loadUserId', json.user_id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "POST /login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"id\": \"{{loadUserId}}\",\n  \"password\": \"{{password}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/login"
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const userId = pm.variables.get('loadUserId');",
+                                    "if (!userId) {",
+                                    "    throw new Error('userId пустой — выполните папку «Подготовка» или POST /user/register');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Login request has no Bearer header', function () {",
+                                    "    pm.expect(pm.request.headers.has('Authorization')).to.be.false;",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Has token', function () {",
+                                    "    pm.expect(json.token).to.be.a('string').and.not.empty;",
+                                    "});",
+                                    "pm.collectionVariables.set('loadToken', json.token);",
+                                    "pm.environment.set('loadToken', json.token);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Нагрузочный тест: нагрузка",
+            "item": [
+                {
+                    "name": "GET /user/search (с Bearer-токеном)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{loadToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/user/search?first_name={{loadFirstName}}&last_name={{loadLastName}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "user",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "first_name",
+                                    "value": "{{loadFirstName}}"
+                                },
+                                {
+                                    "key": "last_name",
+                                    "value": "{{loadLastName}}"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('loadToken');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — выполните папку «Подготовка» или POST /login');",
+                                    "}",
+                                    "const firstNames = ['Иван', 'Пётр', 'Анна', 'Мария', 'Роберт', 'Елена', 'Алексей', 'Ольга', 'Сергей', 'Татьяна'];",
+                                    "const lastNames = ['Абрамов', 'Борисова', 'Петров', 'Сидоров', 'Яшина', 'Смирнов', 'Кузнецова', 'Попов', 'Волков', 'Морозова'];",
+                                    "const randomOf = (items) => items[Math.floor(Math.random() * items.length)];",
+                                    "const prefix = (value, min, max) => value.slice(0, min + Math.floor(Math.random() * (max - min + 1)));",
+                                    "pm.collectionVariables.set('loadFirstName', prefix(randomOf(firstNames), 2, 4));",
+                                    "pm.collectionVariables.set('loadLastName', prefix(randomOf(lastNames), 2, 4));"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Authorization Bearer header sent', function () {",
+                                    "    const auth = pm.request.headers.get('Authorization');",
+                                    "    pm.expect(auth).to.match(/^Bearer .+/);",
+                                    "    pm.expect(auth).to.include(pm.variables.get('loadToken'));",
+                                    "});",
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(pm.response.json()).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Response time below 2000 ms', function () {",
+                                    "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
                 }
             ]
         }

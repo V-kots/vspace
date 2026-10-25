@@ -14,7 +14,9 @@
     "paths": {
         "/login": {
             "post": {
-                "tags": ["Auth"],
+                "tags": [
+                    "Auth"
+                ],
                 "summary": "Аутентификация",
                 "description": "Передача id пользователя (UUID из регистрации) и пароля. Возвращается Bearer-токен Sanctum.",
                 "requestBody": {
@@ -66,7 +68,9 @@
         },
         "/user/register": {
             "post": {
-                "tags": ["User"],
+                "tags": [
+                    "User"
+                ],
                 "summary": "Регистрация",
                 "description": "Создание нового пользователя. Пароль хранится в виде хеша.",
                 "requestBody": {
@@ -114,7 +118,9 @@
         },
         "/user/get/{id}": {
             "get": {
-                "tags": ["User"],
+                "tags": [
+                    "User"
+                ],
                 "summary": "Получение анкеты",
                 "parameters": [
                     {
@@ -150,6 +156,65 @@
                                 }
                             }
                         }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
+                }
+            }
+        },
+        "/user/search": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Поиск анкет",
+                "description": "Поиск по префиксу имени и фамилии одновременно (first_name LIKE '...%' AND second_name LIKE '...%'). Поиск регистронезависимый. Результат отсортирован по id анкеты. Индексы не используются.",
+                "parameters": [
+                    {
+                        "name": "first_name",
+                        "in": "query",
+                        "required": true,
+                        "description": "Начало имени (префикс)",
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "example": "Конст"
+                    },
+                    {
+                        "name": "last_name",
+                        "in": "query",
+                        "required": true,
+                        "description": "Начало фамилии (префикс)",
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "example": "Оси"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список найденных анкет (может быть пустым)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/User"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
                     },
                     "500": {
                         "$ref": "#/components/responses/5xx"
@@ -197,7 +262,10 @@
             },
             "LoginRequest": {
                 "type": "object",
-                "required": ["id", "password"],
+                "required": [
+                    "id",
+                    "password"
+                ],
                 "properties": {
                     "id": {
                         "$ref": "#/components/schemas/UserId"
@@ -210,7 +278,9 @@
             },
             "LoginResponse": {
                 "type": "object",
-                "required": ["token"],
+                "required": [
+                    "token"
+                ],
                 "properties": {
                     "token": {
                         "type": "string",
@@ -229,8 +299,6 @@
                     "first_name",
                     "second_name",
                     "birthdate",
-                    "email",
-                    "gender",
                     "city",
                     "password"
                 ],
@@ -250,11 +318,17 @@
                     },
                     "email": {
                         "type": "string",
-                        "format": "email"
+                        "format": "email",
+                        "description": "Необязательно. Если не передан — генерируется служебный адрес."
                     },
                     "gender": {
                         "type": "string",
-                        "enum": ["male", "female", "other"]
+                        "enum": [
+                            "male",
+                            "female",
+                            "other"
+                        ],
+                        "description": "Необязательно. По умолчанию other."
                     },
                     "biography": {
                         "type": "string",
@@ -274,7 +348,9 @@
             },
             "RegisterResponse": {
                 "type": "object",
-                "required": ["user_id"],
+                "required": [
+                    "user_id"
+                ],
                 "properties": {
                     "user_id": {
                         "$ref": "#/components/schemas/UserId"
@@ -310,7 +386,9 @@
             },
             "ErrorBody": {
                 "type": "object",
-                "required": ["message"],
+                "required": [
+                    "message"
+                ],
                 "properties": {
                     "message": {
                         "type": "string",

@@ -66,11 +66,47 @@ SQL;
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function searchByNames(string $firstName, string $lastName): array
+    {
+        $sql = <<<'SQL'
+SELECT
+    id,
+    first_name,
+    second_name,
+    birthdate,
+    biography,
+    city
+FROM users
+WHERE LOWER(first_name) LIKE LOWER(:first_name) ESCAPE '!'
+  AND LOWER(second_name) LIKE LOWER(:second_name) ESCAPE '!'
+ORDER BY id ASC
+SQL;
+
+        $rows = DB::select($sql, [
+            'first_name' => self::prefixPattern($firstName),
+            'second_name' => self::prefixPattern($lastName),
+        ]);
+
+        return array_map(static fn (object $row): array => (array) $row, $rows);
+    }
+
+    private static function prefixPattern(string $value): string
+    {
+        $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
+
+        return $escaped.'%';
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public function insert(array $data): string
     {
         $id = (string) Str::uuid();
+        $email = ($data['email'] ?? '') !== '' ? $data['email'] : Str::uuid().'@vspace.local';
+        $gender = $data['gender'] ?? 'other';
 
         $sql = <<<'SQL'
 INSERT INTO users (
@@ -100,20 +136,18 @@ INSERT INTO users (
 )
 SQL;
 
-        $now = now();
-
         DB::insert($sql, [
             'id' => $id,
             'first_name' => $data['first_name'],
             'second_name' => $data['second_name'],
             'birthdate' => $data['birthdate'],
-            'email' => $data['email'],
-            'gender' => $data['gender'],
+            'email' => $email,
+            'gender' => $gender,
             'biography' => $data['biography'] ?? null,
             'city' => $data['city'],
             'password' => $data['password'],
             'is_active' => true,
-            'created_at' => $now,
+            'created_at' => now(),
         ]);
 
         return $id;

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Hash;
 
 return new class extends Migration
 {
-    private const CSV_PATH = '/import/people.v2.csv';
+    private const CSV_PATH = '/import/people.v2.csv.gz';
 
     private const EMAIL_DOMAIN = 'import.vspace.local';
 
@@ -26,7 +26,7 @@ return new class extends Migration
             );
 
             DB::statement(
-                "COPY users_import_staging (full_name, birthdate, city) FROM PROGRAM 'head -n -1 ".self::CSV_PATH."' WITH (FORMAT csv)"
+                "COPY users_import_staging (full_name, birthdate, city) FROM PROGRAM 'zcat ".self::CSV_PATH." | head -n -1' WITH (FORMAT csv)"
             );
 
             DB::statement(<<<'SQL'

@@ -39,5 +39,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 WORKDIR /var/www/html
 
+ENV PHP_FPM_MAX_CHILDREN=96
+
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php-fpm", "-F"]

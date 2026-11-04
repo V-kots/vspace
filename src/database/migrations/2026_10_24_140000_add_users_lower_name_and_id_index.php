@@ -11,6 +11,10 @@ return new class extends Migration
 
     public function up(): void
     {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            return;
+        }
+
         DB::statement(<<<'SQL'
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_lower_name_and_id_desc
 ON users (
@@ -23,6 +27,10 @@ SQL);
 
     public function down(): void
     {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            return;
+        }
+
         DB::statement('DROP INDEX CONCURRENTLY IF EXISTS '.self::INDEX_NAME);
     }
 };

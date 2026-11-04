@@ -9,6 +9,7 @@
 | nginx     | `{COMPOSE_PROJECT_NAME}-nginx-1` | HTTPS (порты из `.env.docker`) |
 | php-fpm   | `{COMPOSE_PROJECT_NAME}-php-*`   | Laravel 13 (PHP 8.3), масштабируется |
 | postgres  | …                | БД Laravel                          |
+| pgbouncer | `{COMPOSE_PROJECT_NAME}-pgbouncer-1` | Пул соединений к PostgreSQL |
 | redis     | …                | Кэш, сессии, очереди                |
 | mailpit   | …                | Перехват исходящей почты            |
 | loki / alloy / grafana | … | Логи и UI (Prometheus в compose закомментирован) |
@@ -65,6 +66,8 @@ docker compose --env-file .env.docker exec php php artisan migrate
 > **TLS.** Если `docker/ssl/${VSPACE_DOMAIN}.pem` есть — nginx использует его. Если нет, контейнер генерирует самоподписанный сертификат на старте (`docker/nginx/docker-entrypoint.d/05-generate-site-cert.sh`), поэтому свежая копия проекта поднимается без ошибки `cannot load certificate ... no start line`.
 
 > **Пароль PostgreSQL.** Логин/пароль/БД задаются переменными `POSTGRES_*` в `.env.docker` и применяются только при **первой** инициализации `docker-data/postgres`. Если поменять `POSTGRES_PASSWORD` после первого запуска, пароль в существующем томе не изменится — правьте тогда `DB_PASSWORD` в `src/.env` под фактический, либо пересоздайте данные: `docker compose down && sudo rm -rf docker-data/postgres && docker compose up -d`.
+
+> **PgBouncer.** Приложение подключается к `pgbouncer:5432` (`DB_HOST=pgbouncer`), PgBouncer — к `postgres:5432`. По умолчанию: `pool_mode=transaction`, `default_pool_size=32` серверных соединений, `max_client_conn=1000`. PHP-FPM: `pm.max_children=96` (`PHP_FPM_MAX_CHILDREN`). Для transaction-режима в `src/config/database.php` включён `PDO::ATTR_EMULATE_PREPARES`. Наружу PgBouncer опубликован на `localhost:${PGBOUNCER_PUBLISH_PORT:-6432}`.
 
 > `run --rm --no-deps` — одноразовый контейнер php без зависимостей (nginx/postgres не запускаются).
 > Артефакты фронта попадают в `src/public/build/`, nginx отдаёт их без перезапуска (каталог `src` смонтирован).

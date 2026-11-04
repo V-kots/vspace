@@ -45,5 +45,4 @@ class GetUserTest extends TestCase
             ->assertOk()
             ->assertJsonPath('biography', '');
     }
-
 }

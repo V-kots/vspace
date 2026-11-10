@@ -2,12 +2,18 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api, { extractErrorMessage } from '../api/client';
 import AppShell from '../components/AppShell';
+import PostCard from '../components/PostCard';
 
 export default function Profile() {
     const { id } = useParams();
     const [profile, setProfile] = useState(null);
     const [serverError, setServerError] = useState('');
     const [tab, setTab] = useState('about');
+    const [posts, setPosts] = useState([]);
+    const [postsLoading, setPostsLoading] = useState(false);
+    const [postsError, setPostsError] = useState('');
+    const currentUserId = localStorage.getItem('vspace_user_id') || '';
+    const isAuthenticated = Boolean(localStorage.getItem('vspace_token'));
 
     useEffect(() => {
         async function load() {
@@ -20,6 +26,45 @@ export default function Profile() {
         }
         load();
     }, [id]);
+
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setPosts([]);
+            setPostsLoading(false);
+            return undefined;
+        }
+
+        let cancelled = false;
+
+        async function loadPosts() {
+            setPostsLoading(true);
+            setPostsError('');
+
+            try {
+                const { data } = await api.get('/post/feed', {
+                    params: { author_user_id: id, limit: 100 },
+                });
+
+                if (!cancelled) {
+                    setPosts(data);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setPostsError(extractErrorMessage(error));
+                }
+            } finally {
+                if (!cancelled) {
+                    setPostsLoading(false);
+                }
+            }
+        }
+
+        loadPosts();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [id, isAuthenticated]);
 
     if (serverError && !profile) {
         return (
@@ -48,7 +93,7 @@ export default function Profile() {
                         <p className="muted profile-location">{profile.city}</p>
                         <p className="profile-bio">{profile.biography || 'Интересы пока не указаны.'}</p>
                         <div className="profile-stats">
-                            <div><strong>0</strong><span className="muted">Постов</span></div>
+                            <div><strong>{posts.length}</strong><span className="muted">Постов</span></div>
                             <div><strong>0</strong><span className="muted">Подписчиков</span></div>
                             <div><strong>0</strong><span className="muted">Подписок</span></div>
                         </div>
@@ -75,8 +120,22 @@ export default function Profile() {
             )}
 
             {tab === 'posts' && (
-                <div className="panel profile-empty muted">
-                    Постов пока нет — скоро здесь появится лента.
+                <div className="post-feed">
+                    {!isAuthenticated ? (
+                        <div className="panel profile-empty muted">
+                            Войдите, чтобы смотреть посты.
+                        </div>
+                    ) : null}
+                    {isAuthenticated && postsLoading ? <div className="app-loading muted">Загружаем посты...</div> : null}
+                    {postsError ? <div className="alert alert-error">{postsError}</div> : null}
+                    {isAuthenticated && !postsLoading && !postsError && posts.length === 0 ? (
+                        <div className="panel profile-empty muted">
+                            Постов пока нет.
+                        </div>
+                    ) : null}
+                    {posts.map((post) => (
+                        <PostCard key={post.id} post={post} currentUserId={currentUserId} />
+                    ))}
                 </div>
             )}
 

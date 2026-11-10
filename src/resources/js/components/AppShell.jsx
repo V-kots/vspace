@@ -178,7 +178,7 @@ export default function AppShell({ userId, children, variant = 'default' }) {
                     <NavIcon name="feed" />
                     <span>Лента</span>
                 </NavLink> */}
-                <button type="button" className="bottom-nav-fab" aria-label="Создать">
+                <button type="button" className="bottom-nav-fab" aria-label="Создать" onClick={() => navigate('/cabinet')}>
                     <NavIcon name="plus" />
                 </button>
                 {/* <NavLink to="/cabinet" className="bottom-nav-item">

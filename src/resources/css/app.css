@@ -1374,3 +1374,42 @@ textarea.input-invalid:focus {
     margin: 0 auto;
     padding: 2rem 1.25rem;
 }
+
+/* Posts */
+.post-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.composer-input {
+    width: 100%;
+    min-height: 3.5rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    font: inherit;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.composer-input:focus {
+    outline: 2px solid rgba(65, 130, 255, 0.25);
+    border-color: var(--accent);
+}
+
+.composer-actions .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.post-author-link {
+    color: inherit;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.post-author-link:hover {
+    color: var(--accent);
+}

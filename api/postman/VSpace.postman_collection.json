@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "VSpace API",
-        "description": "Коллекция для реализованных endpoints.\n\nСпецификация: `api/swagger/Vspace.openapi.json` (полное ТЗ — `api/swagger/openapi.json`).\n\nПорядок проверки:\n1. POST /user/register → сохраняется `userId`\n2. POST /login — в **body** JSON: `id` + `password` → сохраняется `token`\n3. GET /user/get/{id} — в **header** `Authorization: Bearer {{token}}`, в path `{{userId}}`\n4. GET /user/search — query `first_name` + `last_name` (префиксы), в header `Authorization: Bearer {{token}}`, сортировка по id\n\nПеред register в Pre-request генерируются уникальные `registerFirstName`, `registerSecondName`, `registerEmail`. Перед search из них вычисляются префиксы `searchFirstName`, `searchLastName`. Также: `userId`, `token`.\n\nНагрузочный тест поиска:\n- «Нагрузочный тест: подготовка» — 1 итерация, создаёт пользователя и сохраняет `loadToken`;\n- «Нагрузочный тест: нагрузка» — N итераций GET /user/search с Bearer-токеном.\n\nNewman:\ncp api/postman/VSpace.postman_environment.json /tmp/vspace-load-env.json\nnewman run api/postman/VSpace.postman_collection.json -e /tmp/vspace-load-env.json --folder \"Нагрузочный тест: подготовка\" --iteration-count 1 --insecure --export-environment /tmp/vspace-load-env.json\nnewman run api/postman/VSpace.postman_collection.json -e /tmp/vspace-load-env.json --folder \"Нагрузочный тест: нагрузка\" --iteration-count 1000 --insecure",
+        "description": "Коллекция для реализованных endpoints.\n\nСпецификация: `api/swagger/Vspace.openapi.json` (полное ТЗ — `api/swagger/openapi.json`).\n\nПорядок проверки:\n1. POST /user/register → сохраняется `userId`\n2. POST /login — в **body** JSON: `id` + `password` → сохраняется `token`\n3. GET /user/get/{id} — в **header** `Authorization: Bearer {{token}}`, в path `{{userId}}`\n4. GET /user/search — query `first_name` + `last_name` (префиксы), в header `Authorization: Bearer {{token}}`, сортировка по id\n\nПеред register в Pre-request генерируются уникальные `registerFirstName`, `registerSecondName`, `registerEmail`. Перед search из них вычисляются префиксы `searchFirstName`, `searchLastName`. Также: `userId`, `token`.\n\nНагрузочный тест:\n- «Нагрузочный тест: подготовка» — 1 итерация, создаёт пользователя и сохраняет `loadUserId`/`loadToken`;\n- «Нагрузочный тест: нагрузка» — 1 итерация = 1 × GET /user/get/{id} + 3 × GET /user/search + 4 × POST /post/create + 1 × GET /post/feed. При N итерациях получается N запросов get, 3N запросов search, 4N запросов create и N запросов feed.\n\nТекст поста в create — глобальный автоинкремент `loadPostSeq`: 1, 2, 3, … Он не сбрасывается между итерациями, поэтому каждый созданный пост имеет уникальный текст.\n\nGET /user/get/{id} берёт `userId` из data-файла Collection Runner (колонка `userId`), если данные переданы, иначе использует `loadUserId` из подготовки. Для запроса используется `loadCurrentUserId`, чтобы переменная окружения `loadUserId` не перекрывала значение из CSV.\n\nGET /user/search берёт `firstName`/`lastName` из data-файла Collection Runner, если они там есть, иначе выбирает случайные имя и фамилию из пулов по 100 значений (`loadFirstNames`, `loadLastNames`).\n\n500 уникальных случайных пользователей для нагрузки (500 строк по умолчанию):\n./scripts/loadtest/export-postman-load-users.sh\n→ loadtest/postman-users.csv (baseUrl,userId,password,firstName,lastName)\n\nPostman Collection Runner:\n1. Подготовка: окружение «VSpace local», папка «Нагрузочный тест: подготовка», Iterations = 1, Data не выбирать → Run. Сохраните окружение (Ctrl+S), чтобы `loadUserId`/`loadToken` остались.\n2. Нагрузка: папка «Нагрузочный тест: нагрузка», Data → loadtest/postman-users.csv, Iterations = 500 → Run.\n\nПосты:\n- POST /post/create — Bearer {{token}}, body {text} → сохраняет postId;\n- GET /post/get/{id} — публичное получение поста;\n- GET /post/feed — Bearer {{token}}, offset/limit, опционально author_user_id.\n",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -67,6 +67,38 @@
         },
         {
             "key": "loadLastName",
+            "value": ""
+        },
+        {
+            "key": "loadFirstNames",
+            "value": "София,Мария,Александр,Анна,Максим,Михаил,Даниил,Артём,Виктория,Алиса,Анастасия,Иван,Полина,Елизавета,Александра,Дмитрий,Дарья,Варвара,Екатерина,Ксения,Арина,Ева,Вероника,Василиса,Андрей,Кирилл,Матвей,Марк,Егор,Илья,Тимофей,Никита,Роман,Милана,Лев,Алексей,Валерия,Владимир,Фёдор,Ярослав,Ульяна,Кира,Константин,Вера,Сергей,Степан,Таисия,Маргарита,Николай,Георгий,Алёна,Алина,Арсений,Павел,Тимур,Владислав,Кристина,Мирослава,Глеб,Мирон,Григорий,Ольга,Диана,Макар,Юлия,Денис,Семён,Платон,Евгений,Ангелина,Артемий,Татьяна,Евгения,Виктор,Майя,Леонид,Яна,Злата,Руслан,Богдан,Пётр,Ника,Игорь,Елена,Ирина,Юрий,Василий,Надежда,Савелий,Антон,Захар,Олег,Демид,Дарина,Вячеслав,Артур,Адам,Елисей,Всеволод,Ярослава"
+        },
+        {
+            "key": "loadLastNames",
+            "value": "Иванова,Иванов,Смирнова,Смирнов,Кузнецова,Кузнецов,Попова,Попов,Петрова,Васильев,Васильева,Петров,Соколова,Соколов,Михайлов,Михайлова,Федоров,Новикова,Новиков,Волков,Морозов,Федорова,Волкова,Морозова,Алексеев,Алексеева,Лебедев,Лебедева,Егорова,Семенов,Семенова,Павлова,Егоров,Козлов,Козлова,Павлов,Орлова,Николаева,Степанов,Макарова,Степанова,Орлов,Николаев,Андреев,Андреева,Макаров,Никитин,Никитина,Зайцев,Борисов,Соловьева,Соловьев,Захарова,Яковлев,Захаров,Яковлева,Борисова,Григорьева,Зайцева,Романова,Григорьев,Сергеев,Романов,Воробьев,Сергеева,Воробьева,Фролова,Александрова,Кузьмина,Кузьмин,Фролов,Александров,Дмитриева,Ильин,Дмитриев,Королева,Гусев,Киселева,Ковалев,Королев,Ильина,Белов,Виноградов,Максимова,Поляков,Виноградова,Максимов,Полякова,Сорокина,Гусева,Медведев,Ковалева,Киселев,Медведева,Белова,Антонова,Тарасова,Жукова,Антонов,Сорокин"
+        },
+        {
+            "key": "loadCurrentUserId",
+            "value": ""
+        },
+        {
+            "key": "postId",
+            "value": ""
+        },
+        {
+            "key": "postText",
+            "value": ""
+        },
+        {
+            "key": "loadPostSeq",
+            "value": ""
+        },
+        {
+            "key": "loadPostText",
+            "value": ""
+        },
+        {
+            "key": "loadPostId",
             "value": ""
         }
     ],
@@ -350,6 +382,191 @@
             ]
         },
         {
+            "name": "Посты",
+            "item": [
+                {
+                    "name": "POST /post/create",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"text\": \"{{postText}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/create",
+                        "description": "Создание поста. Bearer-токен из POST /login. Ответ 200: `{ \"id\": \"<uuid>\" }`."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('token');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — сначала выполните POST /login');",
+                                    "}",
+                                    "pm.collectionVariables.set('postText', 'Пост ' + Date.now());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Has post id', function () {",
+                                    "    pm.expect(json.id).to.be.a('string').and.not.empty;",
+                                    "});",
+                                    "pm.collectionVariables.set('postId', json.id);",
+                                    "pm.environment.set('postId', json.id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "GET /post/get/{id}",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/get/{{postId}}",
+                        "description": "Публичное получение поста по id."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const postId = pm.variables.get('postId');",
+                                    "if (!postId) {",
+                                    "    throw new Error('postId пустой — сначала выполните POST /post/create');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Post id matches', function () {",
+                                    "    pm.expect(json.id).to.eql(pm.variables.get('postId'));",
+                                    "});",
+                                    "pm.test('Has text and author', function () {",
+                                    "    pm.expect(json.text).to.be.a('string').and.not.empty;",
+                                    "    pm.expect(json.author_user_id).to.be.a('string').and.not.empty;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "GET /post/feed",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/post/feed?offset=0&limit=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "post",
+                                "feed"
+                            ],
+                            "query": [
+                                {
+                                    "key": "offset",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "description": "Лента постов: свои и других пользователей. Bearer-токен обязателен."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('token');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — сначала выполните POST /login');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(10);",
+                                    "});",
+                                    "const postId = pm.variables.get('postId');",
+                                    "if (postId) {",
+                                    "    pm.test('Feed contains created post', function () {",
+                                    "        pm.expect(json.some((post) => post.id === postId)).to.be.true;",
+                                    "    });",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
             "name": "Примеры ошибок",
             "item": [
                 {
@@ -613,7 +830,69 @@
             "name": "Нагрузочный тест: нагрузка",
             "item": [
                 {
-                    "name": "GET /user/search (с Bearer-токеном)",
+                    "name": "GET /user/get/{id} (с Bearer-токеном)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{loadToken}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/user/get/{{loadCurrentUserId}}",
+                        "description": "Получение анкеты по `userId` из data-файла Collection Runner (колонка `userId`), иначе — по `loadUserId` из «Нагрузочного теста: подготовка»."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('loadToken');",
+                                    "const iterationUserId = pm.iterationData.get('userId');",
+                                    "const userId = iterationUserId || pm.variables.get('loadUserId');",
+                                    "if (!token || !userId) {",
+                                    "    throw new Error('loadToken/loadUserId пустые — выполните папку «Нагрузочный тест: подготовка»');",
+                                    "}",
+                                    "",
+                                    "pm.collectionVariables.set('loadCurrentUserId', userId);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Authorization Bearer header sent', function () {",
+                                    "    const auth = pm.request.headers.get('Authorization');",
+                                    "    pm.expect(auth).to.match(/^Bearer .+/);",
+                                    "    pm.expect(auth).to.include(pm.variables.get('loadToken'));",
+                                    "});",
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is object', function () {",
+                                    "    pm.expect(json).to.be.an('object');",
+                                    "});",
+                                    "pm.test('Has load user id', function () {",
+                                    "    pm.expect(json.id).to.eql(pm.variables.get('loadCurrentUserId'));",
+                                    "});",
+                                    "pm.test('Response time below 2000 ms', function () {",
+                                    "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "GET /user/search #1 (с Bearer-токеном)",
                     "request": {
                         "method": "GET",
                         "header": [
@@ -656,12 +935,27 @@
                                     "if (!token) {",
                                     "    throw new Error('token пустой — выполните папку «Подготовка» или POST /login');",
                                     "}",
-                                    "const firstNames = ['Иван', 'Пётр', 'Анна', 'Мария', 'Роберт', 'Елена', 'Алексей', 'Ольга', 'Сергей', 'Татьяна'];",
-                                    "const lastNames = ['Абрамов', 'Борисова', 'Петров', 'Сидоров', 'Яшина', 'Смирнов', 'Кузнецова', 'Попов', 'Волков', 'Морозова'];",
-                                    "const randomOf = (items) => items[Math.floor(Math.random() * items.length)];",
-                                    "const prefix = (value, min, max) => value.slice(0, min + Math.floor(Math.random() * (max - min + 1)));",
-                                    "pm.collectionVariables.set('loadFirstName', prefix(randomOf(firstNames), 2, 4));",
-                                    "pm.collectionVariables.set('loadLastName', prefix(randomOf(lastNames), 2, 4));"
+                                    "",
+                                    "const iterationFirstName = pm.iterationData.get('firstName');",
+                                    "const iterationLastName = pm.iterationData.get('lastName');",
+                                    "",
+                                    "let firstName;",
+                                    "let lastName;",
+                                    "",
+                                    "if (iterationFirstName && iterationLastName) {",
+                                    "    firstName = iterationFirstName;",
+                                    "    lastName = iterationLastName;",
+                                    "} else {",
+                                    "    const firstNames = pm.collectionVariables.get('loadFirstNames').split(',');",
+                                    "    const lastNames = pm.collectionVariables.get('loadLastNames').split(',');",
+                                    "    const randomOf = (items) => items[Math.floor(Math.random() * items.length)];",
+                                    "    const prefix = (value, min, max) => value.slice(0, min + Math.floor(Math.random() * (max - min + 1)));",
+                                    "    firstName = prefix(randomOf(firstNames), 2, 4);",
+                                    "    lastName = prefix(randomOf(lastNames), 2, 4);",
+                                    "}",
+                                    "",
+                                    "pm.collectionVariables.set('loadFirstName', firstName);",
+                                    "pm.collectionVariables.set('loadLastName', lastName);"
                                 ],
                                 "type": "text/javascript"
                             }
@@ -683,6 +977,505 @@
                                     "});",
                                     "pm.test('Response time below 2000 ms', function () {",
                                     "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "GET /user/search #2 (с Bearer-токеном)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{loadToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/user/search?first_name={{loadFirstName}}&last_name={{loadLastName}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "user",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "first_name",
+                                    "value": "{{loadFirstName}}"
+                                },
+                                {
+                                    "key": "last_name",
+                                    "value": "{{loadLastName}}"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('loadToken');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — выполните папку «Подготовка» или POST /login');",
+                                    "}",
+                                    "",
+                                    "const iterationFirstName = pm.iterationData.get('firstName');",
+                                    "const iterationLastName = pm.iterationData.get('lastName');",
+                                    "",
+                                    "let firstName;",
+                                    "let lastName;",
+                                    "",
+                                    "if (iterationFirstName && iterationLastName) {",
+                                    "    firstName = iterationFirstName;",
+                                    "    lastName = iterationLastName;",
+                                    "} else {",
+                                    "    const firstNames = pm.collectionVariables.get('loadFirstNames').split(',');",
+                                    "    const lastNames = pm.collectionVariables.get('loadLastNames').split(',');",
+                                    "    const randomOf = (items) => items[Math.floor(Math.random() * items.length)];",
+                                    "    const prefix = (value, min, max) => value.slice(0, min + Math.floor(Math.random() * (max - min + 1)));",
+                                    "    firstName = prefix(randomOf(firstNames), 2, 4);",
+                                    "    lastName = prefix(randomOf(lastNames), 2, 4);",
+                                    "}",
+                                    "",
+                                    "pm.collectionVariables.set('loadFirstName', firstName);",
+                                    "pm.collectionVariables.set('loadLastName', lastName);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Authorization Bearer header sent', function () {",
+                                    "    const auth = pm.request.headers.get('Authorization');",
+                                    "    pm.expect(auth).to.match(/^Bearer .+/);",
+                                    "    pm.expect(auth).to.include(pm.variables.get('loadToken'));",
+                                    "});",
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(pm.response.json()).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Response time below 2000 ms', function () {",
+                                    "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "GET /user/search #3 (с Bearer-токеном)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{loadToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/user/search?first_name={{loadFirstName}}&last_name={{loadLastName}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "user",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "first_name",
+                                    "value": "{{loadFirstName}}"
+                                },
+                                {
+                                    "key": "last_name",
+                                    "value": "{{loadLastName}}"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('loadToken');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — выполните папку «Подготовка» или POST /login');",
+                                    "}",
+                                    "",
+                                    "const iterationFirstName = pm.iterationData.get('firstName');",
+                                    "const iterationLastName = pm.iterationData.get('lastName');",
+                                    "",
+                                    "let firstName;",
+                                    "let lastName;",
+                                    "",
+                                    "if (iterationFirstName && iterationLastName) {",
+                                    "    firstName = iterationFirstName;",
+                                    "    lastName = iterationLastName;",
+                                    "} else {",
+                                    "    const firstNames = pm.collectionVariables.get('loadFirstNames').split(',');",
+                                    "    const lastNames = pm.collectionVariables.get('loadLastNames').split(',');",
+                                    "    const randomOf = (items) => items[Math.floor(Math.random() * items.length)];",
+                                    "    const prefix = (value, min, max) => value.slice(0, min + Math.floor(Math.random() * (max - min + 1)));",
+                                    "    firstName = prefix(randomOf(firstNames), 2, 4);",
+                                    "    lastName = prefix(randomOf(lastNames), 2, 4);",
+                                    "}",
+                                    "",
+                                    "pm.collectionVariables.set('loadFirstName', firstName);",
+                                    "pm.collectionVariables.set('loadLastName', lastName);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Authorization Bearer header sent', function () {",
+                                    "    const auth = pm.request.headers.get('Authorization');",
+                                    "    pm.expect(auth).to.match(/^Bearer .+/);",
+                                    "    pm.expect(auth).to.include(pm.variables.get('loadToken'));",
+                                    "});",
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(pm.response.json()).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Response time below 2000 ms', function () {",
+                                    "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "POST /post/create #1 (с Bearer-токеном)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{loadToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"text\": \"{{loadPostText}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/create",
+                        "description": "Создание поста от пользователя `loadUserId`. Текст поста — глобальный автоинкремент `loadPostSeq` (1, 2, 3, …), не сбрасывается между итерациями. Bearer-токен — `loadToken` из «Нагрузочный тест: подготовка»."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('loadToken');",
+                                    "if (!token) {",
+                                    "    throw new Error('loadToken пустой — выполните папку «Нагрузочный тест: подготовка»');",
+                                    "}",
+                                    "",
+                                    "// Глобальный автоинкремент: не сбрасывается, продолжается между итерациями.",
+                                    "const seq = Number(pm.collectionVariables.get('loadPostSeq') || 0) + 1;",
+                                    "pm.collectionVariables.set('loadPostSeq', seq);",
+                                    "pm.collectionVariables.set('loadPostText', String(seq));"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Has post id', function () {",
+                                    "    pm.expect(json.id).to.be.a('string').and.not.empty;",
+                                    "});",
+                                    "pm.collectionVariables.set('loadPostId', json.id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "POST /post/create #2 (с Bearer-токеном)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{loadToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"text\": \"{{loadPostText}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/create",
+                        "description": "Создание поста от пользователя `loadUserId`. Текст поста — глобальный автоинкремент `loadPostSeq` (1, 2, 3, …), не сбрасывается между итерациями. Bearer-токен — `loadToken` из «Нагрузочный тест: подготовка»."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('loadToken');",
+                                    "if (!token) {",
+                                    "    throw new Error('loadToken пустой — выполните папку «Нагрузочный тест: подготовка»');",
+                                    "}",
+                                    "",
+                                    "// Глобальный автоинкремент: не сбрасывается, продолжается между итерациями.",
+                                    "const seq = Number(pm.collectionVariables.get('loadPostSeq') || 0) + 1;",
+                                    "pm.collectionVariables.set('loadPostSeq', seq);",
+                                    "pm.collectionVariables.set('loadPostText', String(seq));"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Has post id', function () {",
+                                    "    pm.expect(json.id).to.be.a('string').and.not.empty;",
+                                    "});",
+                                    "pm.collectionVariables.set('loadPostId', json.id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "POST /post/create #3 (с Bearer-токеном)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{loadToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"text\": \"{{loadPostText}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/create",
+                        "description": "Создание поста от пользователя `loadUserId`. Текст поста — глобальный автоинкремент `loadPostSeq` (1, 2, 3, …), не сбрасывается между итерациями. Bearer-токен — `loadToken` из «Нагрузочный тест: подготовка»."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('loadToken');",
+                                    "if (!token) {",
+                                    "    throw new Error('loadToken пустой — выполните папку «Нагрузочный тест: подготовка»');",
+                                    "}",
+                                    "",
+                                    "// Глобальный автоинкремент: не сбрасывается, продолжается между итерациями.",
+                                    "const seq = Number(pm.collectionVariables.get('loadPostSeq') || 0) + 1;",
+                                    "pm.collectionVariables.set('loadPostSeq', seq);",
+                                    "pm.collectionVariables.set('loadPostText', String(seq));"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Has post id', function () {",
+                                    "    pm.expect(json.id).to.be.a('string').and.not.empty;",
+                                    "});",
+                                    "pm.collectionVariables.set('loadPostId', json.id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "POST /post/create #4 (с Bearer-токеном)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{loadToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"text\": \"{{loadPostText}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/create",
+                        "description": "Создание поста от пользователя `loadUserId`. Текст поста — глобальный автоинкремент `loadPostSeq` (1, 2, 3, …), не сбрасывается между итерациями. Bearer-токен — `loadToken` из «Нагрузочный тест: подготовка»."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('loadToken');",
+                                    "if (!token) {",
+                                    "    throw new Error('loadToken пустой — выполните папку «Нагрузочный тест: подготовка»');",
+                                    "}",
+                                    "",
+                                    "// Глобальный автоинкремент: не сбрасывается, продолжается между итерациями.",
+                                    "const seq = Number(pm.collectionVariables.get('loadPostSeq') || 0) + 1;",
+                                    "pm.collectionVariables.set('loadPostSeq', seq);",
+                                    "pm.collectionVariables.set('loadPostText', String(seq));"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Has post id', function () {",
+                                    "    pm.expect(json.id).to.be.a('string').and.not.empty;",
+                                    "});",
+                                    "pm.collectionVariables.set('loadPostId', json.id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "GET /post/feed (с Bearer-токеном)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{loadToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/post/feed?offset=0&limit=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "post",
+                                "feed"
+                            ],
+                            "query": [
+                                {
+                                    "key": "offset",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "description": "Лента постов. Bearer-токен — `loadToken` из «Нагрузочный тест: подготовка»."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('loadToken');",
+                                    "if (!token) {",
+                                    "    throw new Error('loadToken пустой — выполните папку «Нагрузочный тест: подготовка»');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(10);",
                                     "});"
                                 ],
                                 "type": "text/javascript"

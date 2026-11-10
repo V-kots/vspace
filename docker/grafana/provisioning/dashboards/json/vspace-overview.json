@@ -99,7 +99,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "Мониторинг **VSpace** по **Loki** (Alloy → access/app логи). Prometheus в compose отключён.\n\nПеременная **`request_id`** (внизу) фильтрует log-панели; `.*` — все строки.",
+        "content": "Мониторинг **VSpace** по **Loki** (Alloy → access/app логи). Метрики контейнеров и хоста — в дашборде **Docker Containers** (Prometheus + cAdvisor + node-exporter).\n\nПеременная **`request_id`** (внизу) фильтрует log-панели; `.*` — все строки.",
         "mode": "markdown"
       },
       "title": "VSpace",

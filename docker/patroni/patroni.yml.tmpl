@@ -1,0 +1,66 @@
+scope: ${PATRONI_SCOPE}
+name: ${PATRONI_NAME}
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: ${PATRONI_CONNECT_ADDRESS}:8008
+
+etcd:
+  hosts: ${ETCD_HOSTS}
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    # Кворумная синхронная репликация включена по умолчанию.
+    # Выключить:  ./scripts/patroni.sh sync off
+    # Ужесточить: PATRONI_SYNC_STRICT=true ./scripts/patroni.sh sync on
+    synchronous_mode: quorum
+    synchronous_node_count: 1
+    synchronous_mode_strict: false
+    postgresql:
+      use_pg_rewind: true
+      parameters:
+        max_connections: 100
+        shared_buffers: 128MB
+        wal_level: replica
+        hot_standby: on
+        max_wal_senders: 10
+        max_replication_slots: 10
+        max_slot_wal_keep_size: 2GB
+        wal_keep_size: 512MB
+        unix_socket_directories: /var/run/postgresql
+      pg_hba:
+        - local all all trust
+        - host all all 0.0.0.0/0 scram-sha-256
+        - host replication replicator 0.0.0.0/0 scram-sha-256
+        - host all all ::/0 scram-sha-256
+        - host replication replicator ::/0 scram-sha-256
+  method: initdb
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+  post_bootstrap: /usr/local/bin/post_bootstrap.sh
+
+postgresql:
+  data_dir: ${PGDATA}
+  bin_dir: /usr/local/bin
+  listen: 0.0.0.0:5432
+  connect_address: ${PATRONI_CONNECT_ADDRESS}:5432
+  pgpass: /var/lib/postgresql/.pgpass
+  authentication:
+    superuser:
+      username: postgres
+      password: ${PATRONI_SUPERUSER_PASSWORD}
+    replication:
+      username: replicator
+      password: ${PATRONI_REPLICATION_PASSWORD}
+    rewind:
+      username: postgres
+      password: ${PATRONI_SUPERUSER_PASSWORD}
+  create_replica_methods:
+    - basebackup
+  basebackup:
+    - checkpoint: fast

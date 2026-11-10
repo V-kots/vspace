@@ -57,7 +57,7 @@ services:
       PHP_OPCACHE_PRELOAD: ${PHP_OPCACHE_PRELOAD:-1}
       PHP_FPM_MAX_CHILDREN: ${PHP_FPM_MAX_CHILDREN:-96}
     depends_on:
-      pgbouncer:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -74,14 +74,30 @@ services:
     restart: unless-stopped
     labels:
       vspace.log_type: postgres
+    # Параметры мастера для потоковой репликации. max_slot_wal_keep_size
+    # ограничивает WAL, который мастер держит для остановленной реплики:
+    # иначе выключенный слейв может забить диск. Если слот потерян — reset.
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - max_slot_wal_keep_size=2GB
     ports:
       - "${POSTGRES_PUBLISH_PORT:-5432}:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-vspace}
       POSTGRES_USER: ${POSTGRES_USER:-vspace}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      REPLICATION_USER: ${POSTGRES_REPLICATION_USER:-replicator}
+      REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator-secret}
     volumes:
       - ${COMPOSE_DATA_ROOT:-./docker-data}/postgres:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
       - ./src/database/seeders/csv:/import:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vspace} -d ${POSTGRES_DB:-vspace}"]
@@ -92,37 +108,38 @@ services:
     networks:
       - app
 
-  pgbouncer:
-    image: edoburu/pgbouncer:v1.26.1-p0
-    restart: unless-stopped
-    labels:
-      vspace.log_type: pgbouncer
-    ports:
-      - "${PGBOUNCER_PUBLISH_PORT:-6432}:5432"
+  # --- Потоковая репликация: 1 мастер (postgres) + 2 реплики ---
+  # Профиль replicas, чтобы реплики не поднимались по умолчанию.
+  # Управление: scripts/replication.sh up|down|status|reset.
+  # Вручную:
+  #   включить:  docker compose --env-file .env.docker --profile replicas up -d
+  #   выключить: scripts/replication.sh down
+  # Реплика сама делает base backup при пустом PGDATA и держит слот
+  # репликации, поэтому повторный base backup после простоя не нужен.
+  #
+  # Одноразовая идемпотентная подготовка мастера: роль репликации, pg_hba,
+  # слоты. Нужна и для уже существующего docker-data/postgres, где
+  # docker-entrypoint-initdb.d уже не выполняется.
+  postgres-replication-init:
+    image: postgres:17.6-alpine
+    restart: "no"
+    profiles: ["replicas"]
     environment:
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_NAME: ${POSTGRES_DB:-vspace}
-      DB_USER: ${POSTGRES_USER:-vspace}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      AUTH_TYPE: scram-sha-256
-      POOL_MODE: ${PGBOUNCER_POOL_MODE:-transaction}
-      MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-1000}
-      DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-32}
-      MAX_PREPARED_STATEMENTS: ${PGBOUNCER_MAX_PREPARED_STATEMENTS:-100}
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
+      PGDATA: /var/lib/postgresql/data
+      PRIMARY_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-vspace}
+      POSTGRES_USER: ${POSTGRES_USER:-vspace}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      REPLICATION_USER: ${POSTGRES_REPLICATION_USER:-replicator}
+      REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator-secret}
+      REPLICA_SLOTS: "vspace_replica_1 vspace_replica_2"
+    entrypoint: ["sh", "/usr/local/bin/ensure-replication.sh"]
+    volumes:
+      - ${COMPOSE_DATA_ROOT:-./docker-data}/postgres:/var/lib/postgresql/data
+      - ./docker/postgres/ensure-replication.sh:/usr/local/bin/ensure-replication.sh:ro
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U ${POSTGRES_USER:-vspace} -d ${POSTGRES_DB:-vspace}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     networks:
       - app
     logging:
@@ -130,6 +147,172 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  postgres-replica-1: &postgres-replica
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    profiles: ["replicas"]
+    labels:
+      vspace.log_type: postgres
+    # Наружу только localhost — для HeidiSQL/DBeaver. Приложение ходит
+    # напрямую в postgres-replica-* внутри сети compose.
+    ports:
+      - "127.0.0.1:${POSTGRES_REPLICA_1_PORT:-5433}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vspace}
+      POSTGRES_USER: ${POSTGRES_USER:-vspace}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      PGDATA: /var/lib/postgresql/data
+      PRIMARY_HOST: postgres
+      REPLICATION_USER: ${POSTGRES_REPLICATION_USER:-replicator}
+      REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator-secret}
+      REPLICA_SLOT: vspace_replica_1
+      # .pgpass лежит вне PGDATA и пересоздаётся entrypoint-скриптом на каждом
+      # старте. PGPASSFILE нужен и pg_basebackup, и walreceiver-у postgres.
+      PGPASSFILE: /var/lib/postgresql/.pgpass
+    entrypoint: ["sh", "/usr/local/bin/replica-entrypoint.sh"]
+    command: ["postgres", "-c", "hot_standby=on"]
+    volumes:
+      - ${COMPOSE_DATA_ROOT:-./docker-data}/postgres-replica-1:/var/lib/postgresql/data
+      - ./docker/postgres/replica-entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-replication-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vspace} -d ${POSTGRES_DB:-vspace}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - app
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres-replica-2:
+    <<: *postgres-replica
+    ports:
+      - "127.0.0.1:${POSTGRES_REPLICA_2_PORT:-5434}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vspace}
+      POSTGRES_USER: ${POSTGRES_USER:-vspace}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      PGDATA: /var/lib/postgresql/data
+      PRIMARY_HOST: postgres
+      REPLICATION_USER: ${POSTGRES_REPLICATION_USER:-replicator}
+      REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator-secret}
+      REPLICA_SLOT: vspace_replica_2
+      PGPASSFILE: /var/lib/postgresql/.pgpass
+    volumes:
+      - ${COMPOSE_DATA_ROOT:-./docker-data}/postgres-replica-2:/var/lib/postgresql/data
+      - ./docker/postgres/replica-entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro
+
+  # PgBouncer ОТКЛЮЧЁН: Laravel ходит напрямую в postgres / postgres-replica-*.
+  # Чтобы вернуть — раскомментируйте блок ниже и верните php.depends_on на pgbouncer.
+  # Отдельный PgBouncer на каждую реплику: Laravel ходит в pgbouncer-read-1/2,
+  # поэтому режим пулинга и работа с prepared statements те же, что у мастера.
+#   pgbouncer-read-1: &pgbouncer-read
+#     image: edoburu/pgbouncer:v1.26.1-p0
+#     restart: unless-stopped
+#     profiles: ["replicas"]
+#     labels:
+#       vspace.log_type: pgbouncer
+#     ports:
+#       - "127.0.0.1:${PGBOUNCER_READ_1_PORT:-6433}:5432"
+#     environment:
+#       DB_HOST: postgres-replica-1
+#       DB_PORT: "5432"
+#       DB_NAME: ${POSTGRES_DB:-vspace}
+#       DB_USER: ${POSTGRES_USER:-vspace}
+#       DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+#       AUTH_TYPE: scram-sha-256
+#       POOL_MODE: ${PGBOUNCER_POOL_MODE:-transaction}
+#       MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-1000}
+#       DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-32}
+#       MAX_PREPARED_STATEMENTS: ${PGBOUNCER_MAX_PREPARED_STATEMENTS:-100}
+#     ulimits:
+#       nofile:
+#         soft: 65536
+#         hard: 65536
+#     depends_on:
+#       postgres-replica-1:
+#         condition: service_healthy
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U ${POSTGRES_USER:-vspace} -d ${POSTGRES_DB:-vspace}"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+#       start_period: 10s
+#     networks:
+#       - app
+#     logging:
+#       driver: json-file
+#       options:
+#         max-size: "10m"
+#         max-file: "3"
+
+#   pgbouncer-read-2:
+#     <<: *pgbouncer-read
+#     ports:
+#       - "127.0.0.1:${PGBOUNCER_READ_2_PORT:-6434}:5432"
+#     environment:
+#       DB_HOST: postgres-replica-2
+#       DB_PORT: "5432"
+#       DB_NAME: ${POSTGRES_DB:-vspace}
+#       DB_USER: ${POSTGRES_USER:-vspace}
+#       DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+#       AUTH_TYPE: scram-sha-256
+#       POOL_MODE: ${PGBOUNCER_POOL_MODE:-transaction}
+#       MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-1000}
+#       DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-32}
+#       MAX_PREPARED_STATEMENTS: ${PGBOUNCER_MAX_PREPARED_STATEMENTS:-100}
+#     depends_on:
+#       postgres-replica-2:
+#         condition: service_healthy
+
+#   pgbouncer:
+#     image: edoburu/pgbouncer:v1.26.1-p0
+#     restart: unless-stopped
+#     labels:
+#       vspace.log_type: pgbouncer
+#     ports:
+#       - "${PGBOUNCER_PUBLISH_PORT:-6432}:5432"
+#     environment:
+#       DB_HOST: postgres
+#       DB_PORT: "5432"
+#       DB_NAME: ${POSTGRES_DB:-vspace}
+#       DB_USER: ${POSTGRES_USER:-vspace}
+#       DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+#       AUTH_TYPE: scram-sha-256
+#       POOL_MODE: ${PGBOUNCER_POOL_MODE:-transaction}
+#       MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-1000}
+#       DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-32}
+#       MAX_PREPARED_STATEMENTS: ${PGBOUNCER_MAX_PREPARED_STATEMENTS:-100}
+#     ulimits:
+#       nofile:
+#         soft: 65536
+#         hard: 65536
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U ${POSTGRES_USER:-vspace} -d ${POSTGRES_DB:-vspace}"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+#       start_period: 10s
+#     networks:
+#       - app
+#     logging:
+#       driver: json-file
+#       options:
+#         max-size: "10m"
+#         max-file: "3"
 
   redis:
     image: redis:8.4.6-alpine
@@ -190,18 +373,79 @@ services:
     networks:
       - app
 
-  # prometheus:
-  #   image: prom/prometheus:v3.2.1
-  #   restart: unless-stopped
-  #   command:
-  #     - --config.file=/etc/prometheus/prometheus.yml
-  #     - --storage.tsdb.path=/prometheus
-  #     - --web.enable-lifecycle
-  #   volumes:
-  #     - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-  #     - ${COMPOSE_DATA_ROOT:-./docker-data}/prometheus:/prometheus
-  #   networks:
-  #     - app
+  # cAdvisor: метрики контейнеров (CPU, memory, network, fs) для Prometheus.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "127.0.0.1:${CADVISOR_PORT:-8080}:8080"
+    networks:
+      - app
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # node-exporter: метрики хоста/Docker VM (CPU, RAM, disk, load).
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/host/root
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+    ports:
+      - "127.0.0.1:${NODE_EXPORTER_PORT:-9100}:9100"
+    networks:
+      - app
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-7d}
+      - --web.enable-lifecycle
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${COMPOSE_DATA_ROOT:-./docker-data}/prometheus:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    depends_on:
+      init-data:
+        condition: service_completed_successfully
+      cadvisor:
+        condition: service_started
+      node-exporter:
+        condition: service_started
+    networks:
+      - app
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   grafana:
     image: grafana/grafana:11.5.2
@@ -227,9 +471,8 @@ services:
       - app
 
   # One-shot: bind-mount каталоги данных создаются Docker от root, а Grafana
-  # пишет под uid 472, Loki — под 10001. Без chown они уходят в restart loop с
-  # Permission denied, а nginx падает с `host not found in upstream "grafana"`.
-  # Гарантирует корректные права в любой копии проекта.
+  # пишет под uid 472, Loki — под 10001, Prometheus — под 65534 (nobody).
+  # Без chown они уходят в restart loop с Permission denied.
   init-data:
     image: alpine:3.21
     restart: "no"
@@ -237,9 +480,10 @@ services:
       - sh
       - -c
       - >-
-        mkdir -p /data/grafana /data/loki /data/nginx-logs &&
+        mkdir -p /data/grafana /data/loki /data/prometheus /data/nginx-logs &&
         chown -R 472:472 /data/grafana &&
-        chown -R 10001:10001 /data/loki
+        chown -R 10001:10001 /data/loki &&
+        chown -R 65534:65534 /data/prometheus
     volumes:
       - ${COMPOSE_DATA_ROOT:-./docker-data}:/data
     networks:

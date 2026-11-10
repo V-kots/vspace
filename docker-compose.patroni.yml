@@ -1,0 +1,205 @@
+# Patroni: 3 etcd + 3 PostgreSQL/Patroni. HAProxy отключён.
+#
+# Запуск только этого стека:
+#   docker compose --env-file .env.docker \
+#     -f docker-compose.yml -f docker-compose.patroni.yml \
+#     --profile patroni up -d
+#
+# Управление:
+#   ./scripts/patroni.sh up|down|status
+#   ./scripts/patroni.sh sync on|off|status
+#
+# Laravel подключается напрямую к лидеру/репликам patroni-*:5432.
+# HAProxy-блок ниже закомментирован для быстрого возврата.
+
+x-patroni-common: &patroni-common
+  build:
+    context: ./docker/patroni
+    dockerfile: Dockerfile
+  image: ${COMPOSE_PROJECT_NAME:-vspace}-patroni:local
+  restart: unless-stopped
+  profiles: ["patroni"]
+  environment: &patroni-env
+    PATRONI_SCOPE: vspace
+    ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+    PGDATA: /var/lib/postgresql/data
+    PATRONI_SUPERUSER_PASSWORD: ${PATRONI_SUPERUSER_PASSWORD:-postgres}
+    PATRONI_REPLICATION_PASSWORD: ${PATRONI_REPLICATION_PASSWORD:-replicator-secret}
+    PATRONI_APP_PASSWORD: ${PATRONI_APP_PASSWORD:-secret}
+    PATRONI_APP_DB: ${PATRONI_APP_DB:-vspace}
+  depends_on:
+    etcd1:
+      condition: service_healthy
+    etcd2:
+      condition: service_healthy
+    etcd3:
+      condition: service_healthy
+  networks:
+    - app
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-etcd-common: &etcd-common
+  image: quay.io/coreos/etcd:v3.5.17
+  restart: unless-stopped
+  profiles: ["patroni"]
+  environment:
+    ETCDCTL_API: "3"
+  networks:
+    - app
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  etcd1:
+    <<: *etcd-common
+    command:
+      - /usr/local/bin/etcd
+      - --name=etcd1
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd1:2379
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-advertise-peer-urls=http://etcd1:2380
+      - --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - --initial-cluster-token=vspace-etcd
+      - --initial-cluster-state=new
+      - --enable-v2=true
+    volumes:
+      - ${COMPOSE_DATA_ROOT:-./docker-data}/etcd1:/etcd-data
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/etcdctl", "--endpoints=http://127.0.0.1:2379", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  etcd2:
+    <<: *etcd-common
+    command:
+      - /usr/local/bin/etcd
+      - --name=etcd2
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd2:2379
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-advertise-peer-urls=http://etcd2:2380
+      - --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - --initial-cluster-token=vspace-etcd
+      - --initial-cluster-state=new
+      - --enable-v2=true
+    volumes:
+      - ${COMPOSE_DATA_ROOT:-./docker-data}/etcd2:/etcd-data
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/etcdctl", "--endpoints=http://127.0.0.1:2379", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  etcd3:
+    <<: *etcd-common
+    command:
+      - /usr/local/bin/etcd
+      - --name=etcd3
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd3:2379
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-advertise-peer-urls=http://etcd3:2380
+      - --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - --initial-cluster-token=vspace-etcd
+      - --initial-cluster-state=new
+      - --enable-v2=true
+    volumes:
+      - ${COMPOSE_DATA_ROOT:-./docker-data}/etcd3:/etcd-data
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/etcdctl", "--endpoints=http://127.0.0.1:2379", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  patroni-1:
+    <<: *patroni-common
+    environment:
+      <<: *patroni-env
+      PATRONI_NAME: patroni-1
+      PATRONI_CONNECT_ADDRESS: patroni-1
+    volumes:
+      - ${COMPOSE_DATA_ROOT:-./docker-data}/patroni-1:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8008/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    expose:
+      - "5432"
+      - "8008"
+
+  patroni-2:
+    <<: *patroni-common
+    environment:
+      <<: *patroni-env
+      PATRONI_NAME: patroni-2
+      PATRONI_CONNECT_ADDRESS: patroni-2
+    volumes:
+      - ${COMPOSE_DATA_ROOT:-./docker-data}/patroni-2:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8008/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    expose:
+      - "5432"
+      - "8008"
+
+  patroni-3:
+    <<: *patroni-common
+    environment:
+      <<: *patroni-env
+      PATRONI_NAME: patroni-3
+      PATRONI_CONNECT_ADDRESS: patroni-3
+    volumes:
+      - ${COMPOSE_DATA_ROOT:-./docker-data}/patroni-3:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8008/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    expose:
+      - "5432"
+      - "8008"
+
+  # HAProxy ОТКЛЮЧЁН: Laravel подключается напрямую к узлам patroni-*.
+  # Чтобы вернуть — раскомментируйте блок ниже и верните логику use в scripts/patroni.sh.
+#   haproxy:
+#     image: haproxy:3.0-alpine
+#     restart: unless-stopped
+#     profiles: ["patroni"]
+#     ports:
+#       - "127.0.0.1:${PATRONI_WRITE_PORT:-5000}:5000"
+#       - "127.0.0.1:${PATRONI_READ_PORT:-5001}:5001"
+#       - "127.0.0.1:${PATRONI_STATS_PORT:-7000}:7000"
+#     volumes:
+#       - ./docker/patroni/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+#     depends_on:
+#       - patroni-1
+#       - patroni-2
+#       - patroni-3
+#     networks:
+#       - app
+#     logging:
+#       driver: json-file
+#       options:
+#         max-size: "10m"
+#         max-file: "3"

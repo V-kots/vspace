@@ -8,11 +8,12 @@
 |-----------|------------------|-------------------------------------|
 | nginx     | `{COMPOSE_PROJECT_NAME}-nginx-1` | HTTPS (порты из `.env.docker`) |
 | php-fpm   | `{COMPOSE_PROJECT_NAME}-php-*`   | Laravel 13 (PHP 8.3), масштабируется |
-| postgres  | …                | БД Laravel                          |
-| pgbouncer | `{COMPOSE_PROJECT_NAME}-pgbouncer-1` | Пул соединений к PostgreSQL |
+| postgres  | …                | БД Laravel (мастер)                 |
+| postgres-replica-1/2 | …      | Реплики чтения (profile `replicas`) |
 | redis     | …                | Кэш, сессии, очереди                |
 | mailpit   | …                | Перехват исходящей почты            |
-| loki / alloy / grafana | … | Логи и UI (Prometheus в compose закомментирован) |
+| loki / alloy / grafana | … | Логи и UI |
+| prometheus / cadvisor / node-exporter | … | Метрики контейнеров и хоста |
 
 ## Требования
 
@@ -67,7 +68,11 @@ docker compose --env-file .env.docker exec php php artisan migrate
 
 > **Пароль PostgreSQL.** Логин/пароль/БД задаются переменными `POSTGRES_*` в `.env.docker` и применяются только при **первой** инициализации `docker-data/postgres`. Если поменять `POSTGRES_PASSWORD` после первого запуска, пароль в существующем томе не изменится — правьте тогда `DB_PASSWORD` в `src/.env` под фактический, либо пересоздайте данные: `docker compose down && sudo rm -rf docker-data/postgres && docker compose up -d`.
 
+> **PgBouncer отключён.** Laravel подключается напрямую: `DB_HOST=postgres`, `DB_READ_HOSTS=postgres-replica-1,postgres-replica-2`. Сервисы PgBouncer закомментированы в `docker-compose.yml`.
+>
+> <!-- PgBouncer отключён; блок оставлен для возврата:
 > **PgBouncer.** Приложение подключается к `pgbouncer:5432` (`DB_HOST=pgbouncer`), PgBouncer — к `postgres:5432`. По умолчанию: `pool_mode=transaction`, `default_pool_size=32` серверных соединений, `max_client_conn=1000`. PHP-FPM: `pm.max_children=96` (`PHP_FPM_MAX_CHILDREN`). Для transaction-режима в `src/config/database.php` включён `PDO::ATTR_EMULATE_PREPARES`. Наружу PgBouncer опубликован на `localhost:${PGBOUNCER_PUBLISH_PORT:-6432}`.
+> -->
 
 > `run --rm --no-deps` — одноразовый контейнер php без зависимостей (nginx/postgres не запускаются).
 > Артефакты фронта попадают в `src/public/build/`, nginx отдаёт их без перезапуска (каталог `src` смонтирован).
@@ -87,18 +92,240 @@ docker compose --env-file .env.docker exec php php artisan migrate
 
 - `GET /mail-test` — отправляет письмо в Mailpit
 
+### Посты
+
+- `POST /post/create` — создать пост, Bearer-токен, body `{"text":"..."}`;
+- `GET /post/get/{id}` — получить пост по id (публично);
+- `GET /post/feed` — лента постов, Bearer-токен, `offset`, `limit`, опционально `author_user_id`.
+
+В SPA: `/cabinet` — создание поста и общая лента; `/profile/{id}` → вкладка **Посты** — посты выбранного пользователя.
+
+## Репликация PostgreSQL (1 мастер + 2 реплики)
+
+Реплики живут в профиле compose `replicas` и по умолчанию не запускаются.
+
+- `postgres` — мастер: сюда идёт запись;
+- `postgres-replica-1`, `postgres-replica-2` — потоковые реплики (`hot_standby`, только чтение);
+- Laravel: `DB_HOST=postgres` для записи, `DB_READ_HOSTS=postgres-replica-1,postgres-replica-2` для чтения.
+
+Кратко:
+
+```bash
+./scripts/replication.sh up        # поднять обе реплики, чтение → на них
+./scripts/replication.sh status    # состояние, слоты, лаг
+./scripts/replication.sh down      # остановить, чтение → на мастер
+./scripts/replication.sh reset 1   # пересоздать реплику (повторный base backup)
+```
+
+Подкоманды принимают номер реплики: `up 2`, `down 1`, `reset 2` (по умолчанию `all`).
+
+Скрипт сам правит `DB_READ_HOSTS` в `src/.env`. Если включён `config:cache`, после смены выполните `php artisan config:cache` и перезагрузите php-fpm.
+
+### Подключение из HeidiSQL
+
+С хоста опубликованы только localhost-порты:
+
+- мастер: `127.0.0.1:5432`;
+- реплика 1: `127.0.0.1:5433`;
+- реплика 2: `127.0.0.1:5434`.
+
+PgBouncer и HAProxy отключены; порты `6432–6434` и `5000–5001` больше не используются.
+
+Параметры подключения: тип **PostgreSQL**, user `vspace`, password `secret` (из `.env.docker`), database `vspace`, SSL off.
+
+Реплики read-only: `SELECT` и просмотр процессов работают, а `INSERT/UPDATE/DELETE` вернут ошибку `cannot execute ... in a read-only transaction`. Для записи подключайтесь к мастеру.
+
+Список процессов на реплике:
+
+```sql
+select pid, backend_type, usename, application_name,
+       client_addr, state, wait_event_type, wait_event,
+       left(query, 100) as query
+  from pg_stat_activity
+ order by pid;
+```
+
+Состояние приёма WAL на реплике:
+
+```sql
+select status, sender_host, sender_port, slot_name, latest_end_lsn
+  from pg_stat_wal_receiver;
+```
+
+Состояние репликации на мастере:
+
+```sql
+select application_name, client_addr, state,
+       pg_wal_lsn_diff(sent_lsn, replay_lsn) as lag_bytes
+  from pg_stat_replication;
+```
+
+### Failover-дрилл: проверка потерь транзакций
+
+Интерактивный скрипт: убивает мастер, промоутит самую свежую реплику, переключает на неё второй слейв и Laravel,
+затем считает, сколько подтверждённых вставок потерялось (RPO).
+
+```bash
+./scripts/failover-drill.sh drill --manual --yes --user <loadUserId>
+```
+
+Скрипт ведёт по шагам подсказками: снять baseline → запустить Postman → Enter (убить мастер) →
+остановить Postman → ввести число успешных `POST /post/create` (или передать `--sent N` заранее).
+
+Показывает: `promoted`, `sent_ok`, `written`, `lost_transactions`, `replica_rejoined`, `promotion_seconds`.
+Отчёт: `ht/manual_restore_master/<timestamp>/report.json` (внутри проекта). `status` — только чтение.
+
+Дрилл разрушает топологию, запускать на одноразовом стенде. Восстановление:
+
+```bash
+./scripts/failover-drill.sh restore --yes
+```
+
+## Patroni: кворумная синхронная репликация
+
+Отдельный HA-кластер в профиле `patroni`:
+
+- 3 × etcd — DCS с кворумом;
+- 3 × PostgreSQL под управлением Patroni (1 лидер + 2 реплики);
+- Laravel подключается напрямую к текущему лидеру и репликам `patroni-*`; HAProxy отключён.
+
+Кластер не заменяет текущий `postgres`/`postgres-replica-*` и живёт в отдельных
+томах `docker-data/patroni-*`, `docker-data/etcd*`.
+
+Patroni не обязателен: обычный `docker compose up -d` его не запускает.
+Остановить и освободить ресурсы: `./scripts/patroni.sh down`.
+
+Кратко:
+
+```bash
+./scripts/patroni.sh up          # etcd + 3 узла Patroni
+./scripts/patroni.sh use         # Laravel → текущий лидер
+./scripts/patroni.sh status      # кластер, лидер, синхронность
+./scripts/patroni.sh sync on     # кворумная синхронная репликация
+./scripts/patroni.sh use-legacy  # Laravel → postgres + реплики
+./scripts/patroni.sh down        # остановить Patroni-стек
+```
+
+Запуск:
+
+```bash
+./scripts/patroni.sh up
+./scripts/patroni.sh status
+```
+
+Кворумная синхронная репликация включена по умолчанию (`synchronous_mode: quorum`).
+Проверить и при необходимости включить заново:
+
+```bash
+./scripts/patroni.sh sync status
+./scripts/patroni.sh sync on
+```
+
+`synchronous_node_count=1` — для 3 узлов это кворум «лидер + 1 реплика».
+Чтобы ждать подтверждения от обеих реплик:
+
+```bash
+PATRONI_SYNC_NODE_COUNT=2 ./scripts/patroni.sh sync on
+```
+
+Выключить обратно в async:
+
+```bash
+./scripts/patroni.sh sync off
+```
+
+Проверка:
+
+```bash
+./scripts/patroni.sh sync status
+```
+
+Смотреть `synchronous_standby_names` (в quorum-режиме будет
+`ANY 1 ("patroni-1","patroni-2")`) и `pg_stat_replication.sync_state`.
+
+Переключить Laravel на Patroni:
+
+```bash
+./scripts/patroni.sh use
+```
+
+`use` находит текущего лидера через `patronictl` и прописывает в `src/.env`
+`DB_HOST=<leader>`, `DB_READ_HOSTS=<replicas>`, порт `5432`.
+После failover в Patroni нужно повторно выполнить `./scripts/patroni.sh use`,
+чтобы обновить адрес лидера.
+
+Вернуть обратно на прямой legacy:
+
+```bash
+./scripts/patroni.sh use-legacy
+```
+
+Проверить, какой режим сейчас у Laravel:
+
+```bash
+./scripts/patroni.sh mode
+```
+
+Быстрое переключение:
+
+```bash
+# на Patroni
+./scripts/patroni.sh up        # если кластер ещё не запущен
+./scripts/patroni.sh use
+
+# обратно на мастер + 2 реплики
+./scripts/patroni.sh use-legacy
+./scripts/replication.sh up    # если legacy-реплики остановлены
+```
+
+Скрипты меняют только `src/.env` и делают `config:clear`, без рестарта
+php-fpm (в dev конфиг не закэширован). Если включён `config:cache` — выполните
+`php artisan config:cache` и перезагрузите php-fpm.
+
+Важно: это два независимых кластера. Запись в legacy не попадает в Patroni и
+наоборот. Для одинаковых данных перед сравнением выполните
+`./scripts/patroni.sh migrate-data` (legacy → Patroni).
+
+Скопировать текущую БД в Patroni (кластер создаётся пустым):
+
+```bash
+./scripts/patroni.sh migrate-data
+```
+
+Команда делает `pg_restore --clean`: объекты в Patroni заменяются данными из
+текущего `postgres`. Старый кластер при этом не меняется.
+
+Остановить Patroni и вернуть Laravel на старый стек:
+
+```bash
+./scripts/patroni.sh down
+```
+
+Важно: `synchronous_mode_strict=false` по умолчанию — при потере кворума
+Patroni отключает синхронный режим и записи продолжаются. Для режима «лучше
+не принимать записи, чем потерять подтверждённые»:
+
+```bash
+PATRONI_SYNC_STRICT=true ./scripts/patroni.sh sync on
+```
+
+HAProxy отключён. Наружу порты Patroni-узлов не публикуются; для отладки
+используйте `psql` внутри сети compose или direct legacy-порты `5432–5434`.
+
 ## Структура проекта
 
 ```
 vspace/
-├── docker-compose.yml      # описание стека
-├── .env.docker             # секреты Docker (не в git)
-├── .env.docker.example     # шаблон
-├── api/                    # OpenAPI (swagger/) и Postman (postman/)
-├── design/mockups/         # макеты UI
-├── docker/                 # конфиги nginx, php, ssl, loki, grafana
-├── docker-data/            # данные контейнеров (не в git)
-└── src/                    # Laravel-приложение
+├── docker-compose.yml          # описание стека
+├── docker-compose.patroni.yml  # Patroni-кластер (profile patroni)
+├── .env.docker                 # секреты Docker (не в git)
+├── .env.docker.example         # шаблон
+├── api/                        # OpenAPI (swagger/) и Postman (postman/)
+├── design/mockups/             # макеты UI
+├── docker/                     # конфиги nginx, php, ssl, loki, grafana, patroni
+├── docker-data/                # данные контейнеров (не в git)
+├── scripts/                    # служебные скрипты, включая patroni.sh
+└── src/                        # Laravel-приложение
 ```
 
 ## SSL
@@ -183,9 +410,44 @@ Laravel пишет **JSON** в stderr (`LOG_STACK=stderr`, `LOG_STDERR_FORMATTER
 {log_type="error", service="php"}
 ```
 
+## Prometheus (Docker Containers)
+
+Метрики контейнеров и Docker-хоста:
+
+- **Prometheus** — `http://127.0.0.1:9090`, retention `7d` (`PROMETHEUS_RETENTION`);
+- **cAdvisor** — `http://127.0.0.1:8080` (CPU/memory/network/fs по контейнерам);
+- **node-exporter** — `http://127.0.0.1:9100` (CPU/RAM/disk/load хоста).
+
+В Grafana datasource **Prometheus** (`prometheus`) и дашборд **Docker Containers**
+(uid `docker-containers`, папка **VSpace**):
+
+`https://grafana.vspace.loc/d/docker-containers`
+
+Панели: CPU Load, CPU Cores, Memory Load, Used Memory, Storage Load, Used Storage,
+Running Containers, System Load, I/O Usage, а также CPU/Memory/Network/FS по
+каждому контейнеру. Переменная **Container** фильтрует контейнеры.
+
+Сравнение нагрузки без реплик и с репликами (legacy-стек):
+
+```bash
+./scripts/patroni.sh use-legacy   # если приложение сейчас на Patroni
+./scripts/replication.sh down     # чтение идёт на мастер
+# прогнать нагрузку (k6 / Postman Performance / hey)
+./scripts/replication.sh up       # чтение идёт на реплики
+# повторить тот же прогон
+```
+
+Смотреть в дашборде контейнеры `postgres`, `postgres-replica-1`,
+`postgres-replica-2`, `php`, `nginx`: CPU, memory, network, fs.
+Для Patroni — `patroni-1/2/3`, `etcd1/2/3`.
+
+Важно: обычный Postman Collection Runner последовательный, поэтому для
+честного сравнения нужен конкурентный прогон (Postman Performance с VU,
+k6 или `hey`).
+
 ## Grafana (Loki)
 
-Prometheus и экспортеры в compose **отключены**. Дашборды используют **LogQL** (Alloy → Loki).
+Дашборды Loki используют **LogQL** (Alloy → Loki).
 
 В Grafana (**Dashboards → VSpace**):
 

@@ -33,6 +33,15 @@ final class ApiError
         ], 404);
     }
 
+    public static function unauthorized(Request $request, string $message = 'Неавторизованный доступ'): JsonResponse
+    {
+        return response()->json([
+            'message' => $message,
+            'request_id' => self::requestId($request),
+            'code' => self::CODE_UNAUTHORIZED,
+        ], 401);
+    }
+
     public static function server(Request $request, string $message = 'Ошибка сервера'): JsonResponse
     {
         return response()->json([

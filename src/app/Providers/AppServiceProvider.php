@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Database\PgsqlConnection;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -13,7 +15,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Свой класс соединения нужен для мягкого отказа реплик чтения:
+        // при недоступности слейва SELECT уходит на мастер.
+        Connection::resolverFor('pgsql', static function ($pdo, string $database, string $prefix, array $config): PgsqlConnection {
+            return new PgsqlConnection($pdo, $database, $prefix, $config);
+        });
     }
 
     /**

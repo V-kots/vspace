@@ -3,6 +3,24 @@
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
+/*
+|--------------------------------------------------------------------------
+| Реплики чтения
+|--------------------------------------------------------------------------
+|
+| Читающие соединения (SELECT) уходят на перечисленные хосты, пишущие
+| (INSERT/UPDATE/DELETE) — на мастер DB_HOST. Пустой список отключает
+| read/write split: все запросы идут на мастер.
+|
+| Read-only транзакция целиком выполняется на реплике так:
+|   DB::connection('pgsql::read')->transaction(fn () => ...);
+|
+*/
+
+$readHosts = array_values(array_filter(
+    array_map('trim', explode(',', (string) env('DB_READ_HOSTS', '')))
+));
+
 return [
 
     /*
@@ -99,7 +117,19 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
             'options' => [
                 PDO::ATTR_EMULATE_PREPARES => true,
+                PDO::ATTR_TIMEOUT => (int) env('DB_CONNECT_TIMEOUT', 2),
             ],
+            ...($readHosts === [] ? [] : [
+                'read' => [
+                    'host' => $readHosts,
+                    'port' => (string) env('DB_READ_PORT', env('DB_PORT', '5432')),
+                ],
+                'write' => [
+                    'host' => env('DB_HOST', '127.0.0.1'),
+                    'port' => (string) env('DB_PORT', '5432'),
+                ],
+                'sticky' => filter_var(env('DB_STICKY', true), FILTER_VALIDATE_BOOLEAN),
+            ]),
         ],
 
         'sqlsrv' => [

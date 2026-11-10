@@ -21,6 +21,10 @@
 
 # --- AI / IDE ---
 /.ai/
+/src/.agents/
+/.opencode/opencode.json
+/AGENTS.md
+/src/AGENTS.md
 /.idea/
 /.vscode/
 /.cursor/
@@ -43,6 +47,10 @@
 /loadtest/user-ids.txt
 /loadtest/meta.env
 /loadtest/meta_postman.csv
+/loadtest/postman-users*.csv
+
+# --- Failover-дрилл (генерируется scripts/failover-drill.sh) ---
+/ht/manual_restore_master/
 
 # --- OS / misc ---
 .DS_Store

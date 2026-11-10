@@ -60,7 +60,9 @@ WHERE email = :email
 LIMIT 1
 SQL;
 
-        $row = DB::selectOne($sql, ['email' => $email]);
+        // Проверка уникальности стоит непосредственно перед INSERT: читаем с
+        // мастера, иначе отставание реплики пропустит дубликат email.
+        $row = DB::selectFromWriteConnection($sql, ['email' => $email]);
 
         return $row ? (array) $row : null;
     }

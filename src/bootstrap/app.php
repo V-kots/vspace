@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\AssignRequestId;
+use App\Support\ApiError;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,11 +18,23 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(AssignRequestId::class);
+
+        // API не делает redirect на web-страницу /login: неавторизованные
+        // запросы должны получать JSON 401 с request_id/code.
+        $middleware->redirectGuestsTo(static fn (): ?string => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('login', 'user/*') || $request->expectsJson(),
+            fn (Request $request) => $request->is('login', 'user/*', 'post/*') || $request->expectsJson(),
         );
+
+        $exceptions->render(function (AuthenticationException $exception, Request $request) {
+            if ($request->is('post/*') || $request->expectsJson()) {
+                return ApiError::unauthorized($request);
+            }
+
+            return null;
+        });
 
         $exceptions->context(function () {
             $request = request();

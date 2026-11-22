@@ -96,9 +96,9 @@ docker compose --env-file .env.docker exec php php artisan migrate
 
 - `POST /post/create` — создать пост, Bearer-токен, body `{"text":"..."}`;
 - `GET /post/get/{id}` — получить пост по id (публично);
-- `GET /post/feed` — лента постов, Bearer-токен, `offset`, `limit`, опционально `author_user_id`.
+- `GET /post/feed` — лента: без `author_user_id` отдаёт посты текущего пользователя и его друзей; с `author_user_id` — только посты указанного автора (друг, сам пользователь или любой другой). Bearer-токен, `offset`, `limit`.
 
-В SPA: `/cabinet` — создание поста и общая лента; `/profile/{id}` → вкладка **Посты** — посты выбранного пользователя.
+В SPA: `/cabinet` — создание поста и 5 последних постов «свои + друзья»; `/posts` — полная лента с автоподгрузкой и формой публикации; `/profile/{id}` → вкладка **Посты** — посты выбранного пользователя; `/friends` — список друзей текущего пользователя (пункт меню «Друзья»).
 
 ## Репликация PostgreSQL (1 мастер + 2 реплики)
 
@@ -372,13 +372,91 @@ docker compose exec php php -v | grep -i xdebug
 
 `host.docker.internal` проброшен через **`extra_hosts: host-gateway`** (сервис `php`).
 
+## Кеширование
+
+Все кеши работают через Redis (`CACHE_STORE=redis`). Управляются переменными в `src/.env`.
+
+| Переменная | По умолчанию | Что делает |
+|---|---|---|
+| `FEED_CACHE_ENABLED` | `true` | кеш ленты постов: ZSET с id постов + fan-out при записи + L1-страница главной |
+| `POST_CACHE_ENABLED` | `true` | кеш тел постов (`post:{id}`) для ленты и открытия поста |
+| `POST_CACHE_TTL` | `3600` | TTL тела поста, секунды |
+| `FEED_CACHE_SIZE` | `1000` | сколько последних постов держать в ленте пользователя |
+| `FEED_CACHE_TTL` | `604800` | TTL ключа ленты, секунды (7 дней) |
+| `FEED_PAGE_CACHE_FRESH` | `2` | сколько секунд страница главной считается свежей |
+| `FEED_PAGE_CACHE_STALE` | `10` | до какого момента страница может отдаваться из кеша с фоновым обновлением |
+| `FRIENDS_CACHE_ENABLED` | `true` | кеш списка друзей (`friend/list`, `friends_count`, fan-out ленты) |
+| `FRIENDS_CACHE_TTL` | `300` | TTL кеша друзей, секунды |
+| `SANCTUM_TOKEN_CACHE_ENABLED` | `false` | кеш поиска токена Sanctum (токен и пользователь сохраняются массивами) |
+| `SANCTUM_TOKEN_CACHE_TTL` | `300` | TTL кеша токена, секунды |
+| `SANCTUM_LAST_USED_AT` | `true` | обновлять `last_used_at` на каждый запрос; при кеше токенов это лишний UPDATE — можно выключить |
+
+**Ключи**
+
+Redis DB 0 (соединение `default`, префикс `vspace-database-`):
+
+- `feed:{userId}` — ZSET, member = id поста, score = `created_at` в мс, не больше `FEED_CACHE_SIZE`.
+- `feed:{userId}:lock` — лок сборки, 5 секунд.
+
+Redis DB 1 (соединение `cache`, префиксы `vspace-database-` + `vspace-cache-`):
+
+- `feed:page:{userId}:0:5` — готовая страница главной (5 постов с авторами).
+- `friends:ids:{userId}` — id друзей.
+- `friends:profiles:{userId}` — публичные профили друзей для `/friend/list`.
+- `auth:token:{sha256}` — модель токена Sanctum с загруженным пользователем.
+- `post:{postId}` — JSON поста с автором (только при `POST_CACHE_ENABLED=true`).
+
+**Инвалидация**
+
+- Создание поста — `ZADD` в ленты автора и друзей, trim до `FEED_CACHE_SIZE`, сброс `feed:page:*` у тех же пользователей.
+- Удаление поста — `ZREM` из тех же лент, сброс страниц и `post:{id}`.
+- Редактирование поста — сброс `post:{id}`.
+- Добавление/удаление дружбы — удаление лент и страниц обоих пользователей, сброс `friends:ids` и `friends:profiles` у обоих.
+- Удаление или изменение токена — сброс `auth:token:*` по хешу. Массовое удаление через query builder события модели не вызывает, там кеш живёт до TTL.
+
+**Важно**
+
+- После правки `config/*.php` или `.env` при включённом opcache (`validate_timestamps=0`) нужен `docker compose --env-file .env.docker restart php`.
+- Если используется `php artisan config:cache`, изменения в `.env` требуют `php artisan config:clear`.
+- В тестах кеши выключены через `phpunit.xml`, чтобы не ходить в реальный Redis.
+
 ## Request ID
 
 Nginx генерирует `$request_id`, передаёт в PHP (`HTTP_X_REQUEST_ID`) и в ответе `X-Request-Id`. Middleware `AssignRequestId` дублирует/принимает ID и кладёт в контекст лога (`request_id`, `http_method`, `http_path`). В nginx access log: `req_id=...`.
 
 ## Логи в Grafana
 
-Laravel пишет **JSON** в stderr (`LOG_STACK=stderr`, `LOG_STDERR_FORMATTER=Illuminate\Log\Formatters\JsonFormatter`). **Alloy** отправляет в Loki с лейблом **`log_type`**:
+Laravel пишет **JSON** в stderr (`LOG_STACK=stderr`, `LOG_STDERR_FORMATTER=App\Logging\JsonFormatter`). Уровень логов задаётся переменной **`LOG_LEVEL`** в `src/.env` (единственный источник, контейнер её не переопределяет):
+
+| `LOG_LEVEL` | Что попадает в лог |
+|-------------|--------------------|
+| `error` | только 5xx и ошибки |
+| `info` (по умолчанию) | 4xx/5xx и успешные изменяющие запросы (`POST`, `PUT`, `PATCH`, `DELETE`) |
+| `debug` | все HTTP-запросы, включая `GET` |
+| `warning` | 4xx/5xx и предупреждения |
+
+После смены уровня в `src/.env` перезапуск контейнера не нужен — изменения подхватываются на следующем запросе.
+
+Общий формат записи (все поля плоские, удобны для `| json` в Loki):
+
+| Поле | Описание |
+|------|----------|
+| `timestamp` | ISO-8601 |
+| `level` / `level_name` | `error`, `warning`, `info`, `debug` / `ERROR`, `WARNING`, … |
+| `channel`, `env`, `app` | канал Monolog, окружение и имя приложения |
+| `message` | событие (`http_request`, текст ошибки и т.п.) |
+| `request_id` | ID запроса из `AssignRequestId` / nginx |
+| `http_method`, `http_path` | метод и путь запроса |
+| `user_id` | авторизованный пользователь, если есть |
+| `status`, `duration_ms`, `ip` | результат и длительность HTTP-запроса |
+| `payload` | тело запроса для `POST`/`PUT`/`PATCH`/`DELETE`; поля `password`, `token` и др. заменяются на `[redacted]` |
+| `query` | query-параметры для `GET`/`HEAD` (аналог payload) |
+| `response` | JSON-ответ: объект целиком, массив — первые 5 элементов; строки длиннее 500 символов обрезаются |
+| `response_count` | общее количество элементов, если ответ — массив (не-JSON и ответы больше 1 МБ не логируются) |
+| `response_truncated` | `true`, если в `response` попала только часть массива (больше 5 элементов) |
+| `exception` | класс, сообщение, файл и trace исключения |
+
+**Alloy** отправляет в Loki с лейблом **`log_type`**:
 
 | `log_type` | Источник |
 |------------|----------|
@@ -392,11 +470,15 @@ Laravel пишет **JSON** в stderr (`LOG_STACK=stderr`, `LOG_STDERR_FORMATTER
 | `mail` | контейнер `mailpit` |
 | `grafana` | контейнер `grafana` |
 
-В Grafana: **Explore → Loki**, примеры:
+В Grafana (`http://grafana.vspace.loc`): **Explore → datasource Loki**. Примеры:
 
 ```logql
 {log_type="app"} | json | message=~"VSPACE_LOKI.*"
+{log_type="app"} | json | level="error"
 {log_type="app"} | json | request_id="<uuid>"
+{log_type="app"} | json | message="http_request" | status >= 400
+{log_type="app"} | json | message="http_request" | http_path=~"friend/.*"
+{log_type="app"} | json | message="http_request" | payload != ""
 {log_type="access"} |= "req_id="
 {log_type="access", service="nginx", vhost="vspace.loc"}
 {log_type="error", service="nginx"}

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\LogRequest;
 use App\Support\ApiError;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(AssignRequestId::class);
+        $middleware->append(LogRequest::class);
 
         // API не делает redirect на web-страницу /login: неавторизованные
         // запросы должны получать JSON 401 с request_id/code.
@@ -25,11 +27,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('login', 'user/*', 'post/*') || $request->expectsJson(),
+            fn (Request $request) => $request->is('login', 'user/*', 'post/*', 'friend/*') || $request->expectsJson(),
         );
 
         $exceptions->render(function (AuthenticationException $exception, Request $request) {
-            if ($request->is('post/*') || $request->expectsJson()) {
+            if ($request->is('post/*', 'friend/*') || $request->expectsJson()) {
                 return ApiError::unauthorized($request);
             }
 

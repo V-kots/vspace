@@ -57,3 +57,5 @@
 Thumbs.db
 *.log
 .phpunit.result.cache
+/loadtest/friends-postman.csv
+/loadtest/friends-group.txt

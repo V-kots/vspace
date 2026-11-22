@@ -3,10 +3,12 @@
 namespace App\Providers;
 
 use App\Database\PgsqlConnection;
+use App\Models\PersonalAccessToken;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +34,22 @@ class AppServiceProvider extends ServiceProvider
 
         ResetPassword::createUrlUsing(static function (object $notifiable, string $token) {
             return config('app.frontend_url')."/password-reset/$token?email=".urlencode($notifiable->getEmailForPasswordReset());
+        });
+
+        // Кеш токенов (выключен по умолчанию): при удалении/изменении токена
+        // сбрасываем его кеш по хешу, который лежит в колонке token.
+        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+
+        $forgetToken = static function (PersonalAccessToken $token): void {
+            PersonalAccessToken::forgetCachedToken((string) $token->token);
+        };
+
+        PersonalAccessToken::deleted($forgetToken);
+        PersonalAccessToken::updated(static function (PersonalAccessToken $token): void {
+            // last_used_at обновляется на каждый запрос — кеш из-за него не сбрасываем.
+            if ($token->wasChanged(['token', 'tokenable_id', 'abilities', 'expires_at'])) {
+                PersonalAccessToken::forgetCachedToken((string) $token->token);
+            }
         });
     }
 }

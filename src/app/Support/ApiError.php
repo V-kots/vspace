@@ -13,6 +13,8 @@ final class ApiError
 
     public const CODE_UNAUTHORIZED = 40101;
 
+    public const CODE_FORBIDDEN = 40301;
+
     public const CODE_SERVER = 50001;
 
     public static function validation(Request $request, string $message = 'Невалидные данные'): JsonResponse
@@ -40,6 +42,15 @@ final class ApiError
             'request_id' => self::requestId($request),
             'code' => self::CODE_UNAUTHORIZED,
         ], 401);
+    }
+
+    public static function forbidden(Request $request, string $message = 'Доступ запрещён'): JsonResponse
+    {
+        return response()->json([
+            'message' => $message,
+            'request_id' => self::requestId($request),
+            'code' => self::CODE_FORBIDDEN,
+        ], 403);
     }
 
     public static function server(Request $request, string $message = 'Ошибка сервера'): JsonResponse

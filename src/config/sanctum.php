@@ -53,6 +53,23 @@ return [
     'expiration' => null,
 
     /*
+    | Обновлять last_used_at на каждый запрос. При включённом кеше токенов
+    | это лишний UPDATE в БД — можно выключить через SANCTUM_LAST_USED_AT=false.
+    */
+
+    'last_used_at' => (bool) env('SANCTUM_LAST_USED_AT', true),
+
+    /*
+    | Кеш поиска токена по хешу: модель восстанавливается из массива,
+    | без запроса в personal_access_tokens.
+    */
+
+    'token_cache' => [
+        'enabled' => (bool) env('SANCTUM_TOKEN_CACHE_ENABLED', false),
+        'ttl' => (int) env('SANCTUM_TOKEN_CACHE_TTL', 300),
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Token Prefix
     |--------------------------------------------------------------------------

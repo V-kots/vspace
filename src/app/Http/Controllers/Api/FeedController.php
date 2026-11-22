@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Repositories\FeedCacheRepository;
 use App\Repositories\PostRepository;
 use App\Support\ApiError;
 use Illuminate\Http\JsonResponse;
@@ -11,7 +13,10 @@ use Illuminate\Support\Facades\Validator;
 
 class FeedController extends Controller
 {
-    public function __construct(private PostRepository $posts) {}
+    public function __construct(
+        private PostRepository $posts,
+        private FeedCacheRepository $feeds,
+    ) {}
 
     public function __invoke(Request $request): JsonResponse
     {
@@ -29,8 +34,20 @@ class FeedController extends Controller
         $limit = (int) $request->query('limit', 10);
         $authorUserId = $request->query('author_user_id');
 
-        return response()->json(
-            $this->posts->feed($offset, $limit, $authorUserId === null ? null : (string) $authorUserId)
-        );
+        // Фильтр по автору кеш не использует: это профиль, а не лента друзей.
+        if ($authorUserId !== null) {
+            return response()
+                ->json($this->posts->feed($offset, $limit, [(string) $authorUserId]))
+                ->header('X-Cache', FeedCacheRepository::SOURCE_OFF);
+        }
+
+        /** @var User $user */
+        $user = $request->user();
+
+        $page = $this->feeds->page((string) $user->id, $offset, $limit);
+
+        return response()
+            ->json($page['items'])
+            ->header('X-Cache', $page['cache']);
     }
 }

@@ -70,9 +70,13 @@ SQL;
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function searchByNames(string $firstName, string $lastName): array
+    public function searchByNames(string $firstName, string $lastName, int $offset = 0, int $limit = 25): array
     {
-        $sql = <<<'SQL'
+        // Значения вставляются в LIMIT/OFFSET напрямую, поэтому ограничиваем их здесь.
+        $offset = max(0, $offset);
+        $limit = max(1, min(100, $limit));
+
+        $sql = <<<SQL
 SELECT
     id,
     first_name,
@@ -84,6 +88,7 @@ FROM users
 WHERE LOWER(first_name) LIKE LOWER(:first_name) ESCAPE '!'
   AND LOWER(second_name) LIKE LOWER(:second_name) ESCAPE '!'
 ORDER BY id ASC
+LIMIT {$limit} OFFSET {$offset}
 SQL;
 
         $rows = DB::select($sql, [
@@ -99,6 +104,26 @@ SQL;
         $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
 
         return $escaped.'%';
+    }
+
+    /**
+     * Общее количество анкет под тот же префиксный поиск (без offset/limit).
+     */
+    public function countByNames(string $firstName, string $lastName): int
+    {
+        $sql = <<<'SQL'
+SELECT COUNT(*) AS aggregate
+FROM users
+WHERE LOWER(first_name) LIKE LOWER(:first_name) ESCAPE '!'
+  AND LOWER(second_name) LIKE LOWER(:second_name) ESCAPE '!'
+SQL;
+
+        $row = DB::selectOne($sql, [
+            'first_name' => self::prefixPattern($firstName),
+            'second_name' => self::prefixPattern($lastName),
+        ]);
+
+        return (int) ($row->aggregate ?? 0);
     }
 
     /**

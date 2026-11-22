@@ -18,6 +18,8 @@ class SearchUsersController extends Controller
         $validator = Validator::make($request->query(), [
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
+            'offset' => ['nullable', 'integer', 'min:0'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         if ($validator->fails()) {
@@ -31,10 +33,13 @@ class SearchUsersController extends Controller
             return ApiError::validation($request);
         }
 
-        $rows = $this->users->searchByNames($firstName, $lastName);
+        $offset = (int) $request->query('offset', 0);
+        $limit = (int) $request->query('limit', 25);
 
-        return response()->json(
-            array_map(fn (array $row): array => $this->users->toPublicProfile($row), $rows)
-        );
+        $rows = $this->users->searchByNames($firstName, $lastName, $offset, $limit);
+
+        return response()
+            ->json(array_map(fn (array $row): array => $this->users->toPublicProfile($row), $rows))
+            ->header('X-Total-Count', (string) $this->users->countByNames($firstName, $lastName));
     }
 }

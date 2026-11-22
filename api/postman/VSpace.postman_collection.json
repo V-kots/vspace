@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "VSpace API",
-        "description": "Коллекция для реализованных endpoints.\n\nСпецификация: `api/swagger/Vspace.openapi.json` (полное ТЗ — `api/swagger/openapi.json`).\n\nПорядок проверки:\n1. POST /user/register → сохраняется `userId`\n2. POST /login — в **body** JSON: `id` + `password` → сохраняется `token`\n3. GET /user/get/{id} — в **header** `Authorization: Bearer {{token}}`, в path `{{userId}}`\n4. GET /user/search — query `first_name` + `last_name` (префиксы), в header `Authorization: Bearer {{token}}`, сортировка по id\n\nПеред register в Pre-request генерируются уникальные `registerFirstName`, `registerSecondName`, `registerEmail`. Перед search из них вычисляются префиксы `searchFirstName`, `searchLastName`. Также: `userId`, `token`.\n\nНагрузочный тест:\n- «Нагрузочный тест: подготовка» — 1 итерация, создаёт пользователя и сохраняет `loadUserId`/`loadToken`;\n- «Нагрузочный тест: нагрузка» — 1 итерация = 1 × GET /user/get/{id} + 3 × GET /user/search + 4 × POST /post/create + 1 × GET /post/feed. При N итерациях получается N запросов get, 3N запросов search, 4N запросов create и N запросов feed.\n\nТекст поста в create — глобальный автоинкремент `loadPostSeq`: 1, 2, 3, … Он не сбрасывается между итерациями, поэтому каждый созданный пост имеет уникальный текст.\n\nGET /user/get/{id} берёт `userId` из data-файла Collection Runner (колонка `userId`), если данные переданы, иначе использует `loadUserId` из подготовки. Для запроса используется `loadCurrentUserId`, чтобы переменная окружения `loadUserId` не перекрывала значение из data-файла.\n\nGET /user/search берёт `firstName`/`lastName` из data-файла Collection Runner, если они там есть, иначе выбирает случайные имя и фамилию из пулов по 100 значений (`loadFirstNames`, `loadLastNames`).\n\nPostman Collection Runner:\n1. Подготовка: окружение «VSpace local», папка «Нагрузочный тест: подготовка», Iterations = 1, Data не выбирать → Run. Сохраните окружение (Ctrl+S), чтобы `loadUserId`/`loadToken` остались.\n2. Нагрузка: папка «Нагрузочный тест: нагрузка», Data не выбирать, Iterations = 500 → Run.\n\nПосты:\n- POST /post/create — Bearer {{token}}, body {text} → сохраняет postId;\n- GET /post/get/{id} — публичное получение поста;\n- GET /post/feed — Bearer {{token}}, offset/limit, опционально author_user_id.\n",
+        "description": "Коллекция для реализованных endpoints.\n\nСпецификация: `api/swagger/Vspace.openapi.json` (полное ТЗ — `api/swagger/openapi.json`).\n\nПорядок проверки:\n1. POST /user/register → сохраняется `userId`\n2. POST /login — в **body** JSON: `id` + `password` → сохраняется `token`\n3. GET /user/get/{id} — в **header** `Authorization: Bearer {{token}}`, в path `{{userId}}`\n4. GET /user/search — query `first_name` + `last_name` (префиксы), в header `Authorization: Bearer {{token}}`, сортировка по id\n\nПеред register в Pre-request генерируются уникальные `registerFirstName`, `registerSecondName`, `registerEmail`. Перед search из них вычисляются префиксы `searchFirstName`, `searchLastName`. Также: `userId`, `token`.\n\nНагрузочный тест:\n- «Нагрузочный тест: подготовка» — 1 итерация, создаёт пользователя и сохраняет `loadUserId`/`loadToken`;\n- «Нагрузочный тест: нагрузка» — 1 итерация = 1 × GET /user/get/{id} + 3 × GET /user/search + 4 × POST /post/create + 1 × GET /post/feed. При N итерациях получается N запросов get, 3N запросов search, 4N запросов create и N запросов feed.\n\nТекст поста в create — глобальный автоинкремент `loadPostSeq`: 1, 2, 3, … Он не сбрасывается между итерациями, поэтому каждый созданный пост имеет уникальный текст.\n\nGET /user/get/{id} берёт `userId` из data-файла Collection Runner (колонка `userId`), если данные переданы, иначе использует `loadUserId` из подготовки. Для запроса используется `loadCurrentUserId`, чтобы переменная окружения `loadUserId` не перекрывала значение из data-файла.\n\nGET /user/search берёт `firstName`/`lastName` из data-файла Collection Runner, если они там есть, иначе выбирает случайные имя и фамилию из пулов по 100 значений (`loadFirstNames`, `loadLastNames`).\n\nPostman Collection Runner:\n1. Подготовка: окружение «VSpace local», папка «Нагрузочный тест: подготовка», Iterations = 1, Data не выбирать → Run. Сохраните окружение (Ctrl+S), чтобы `loadUserId`/`loadToken` остались.\n2. Нагрузка: папка «Нагрузочный тест: нагрузка», Data не выбирать, Iterations = 500 → Run.\n\nПосты:\n- POST /post/create — Bearer {{token}}, body {text} → сохраняет postId;\n- GET /post/get/{id} — публичное получение поста;\n- GET /post/feed — Bearer {{token}}, offset/limit, опционально author_user_id;\n- PUT /post/update — Bearer {{token}}, body {id, text}, только свой пост;\n- PUT /post/delete/{id} — Bearer {{token}}, только свой пост, очищает postId.\n\nДрузья:\n- POST /user/register (пользователь-друг) — создаёт второго пользователя → friendUserId;\n- PUT /friend/set/{user_id} — Bearer {{token}}, добавляет друга, идемпотентно;\n- PUT /friend/add/{user_id} — синоним set, тот же обработчик;\n- PUT /friend/delete/{user_id} — Bearer {{token}}, удаляет друга, идемпотентно.\n",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -99,6 +99,30 @@
         },
         {
             "key": "loadPostId",
+            "value": ""
+        },
+        {
+            "key": "friendUserId",
+            "value": ""
+        },
+        {
+            "key": "friendPassword",
+            "value": ""
+        },
+        {
+            "key": "friendFirstName",
+            "value": ""
+        },
+        {
+            "key": "friendSecondName",
+            "value": ""
+        },
+        {
+            "key": "friendEmail",
+            "value": ""
+        },
+        {
+            "key": "postUpdateText",
             "value": ""
         }
     ],
@@ -304,7 +328,7 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{baseUrl}}/user/search?first_name={{searchFirstName}}&last_name={{searchLastName}}",
+                            "raw": "{{baseUrl}}/user/search?first_name={{searchFirstName}}&last_name={{searchLastName}}&offset=0&limit=25",
                             "host": [
                                 "{{baseUrl}}"
                             ],
@@ -322,10 +346,20 @@
                                     "key": "last_name",
                                     "value": "{{searchLastName}}",
                                     "description": "Префикс фамилии"
+                                },
+                                {
+                                    "key": "offset",
+                                    "value": "0",
+                                    "description": "Смещение (по умолчанию 0)"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "25",
+                                    "description": "Размер страницы (по умолчанию 25, максимум 100)"
                                 }
                             ]
                         },
-                        "description": "Поиск анкет по префиксу имени и фамилии одновременно. Результат — массив User, отсортированный по id. Используется пользователь, созданный в POST /user/register."
+                        "description": "Поиск по префиксам имени и фамилии. Bearer не обязателен. Пагинация: offset/limit (по умолчанию 25, максимум 100)."
                     },
                     "event": [
                         {
@@ -372,6 +406,11 @@
                                     "        pm.expect(user).to.not.have.property('password');",
                                     "        pm.expect(user).to.not.have.property('email');",
                                     "    });",
+                                    "});",
+                                    "pm.test('X-Total-Count header', function () {",
+                                    "    const total = Number(pm.response.headers.get('X-Total-Count'));",
+                                    "    pm.expect(Number.isInteger(total)).to.be.true;",
+                                    "    pm.expect(total).to.be.at.least(pm.response.json().length);",
                                     "});"
                                 ],
                                 "type": "text/javascript"
@@ -520,10 +559,16 @@
                                 {
                                     "key": "limit",
                                     "value": "10"
+                                },
+                                {
+                                    "key": "author_user_id",
+                                    "value": "{{userId}}",
+                                    "description": "Только посты этого автора (необязательно)",
+                                    "disabled": true
                                 }
                             ]
                         },
-                        "description": "Лента постов: свои и других пользователей. Bearer-токен обязателен."
+                        "description": "Лента постов. Без author_user_id — посты текущего пользователя и его друзей. С author_user_id — только посты указанного пользователя (друг, сам пользователь или любой другой автор)."
                     },
                     "event": [
                         {
@@ -558,6 +603,356 @@
                                     "        pm.expect(json.some((post) => post.id === postId)).to.be.true;",
                                     "    });",
                                     "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PUT /post/update",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"id\": \"{{postId}}\",\n  \"text\": \"{{postUpdateText}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/update",
+                        "description": "Редактирование собственного поста. Bearer-токен из POST /login. Ответ 200. Чужой пост → 403."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('token');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — сначала выполните POST /login');",
+                                    "}",
+                                    "const postId = pm.variables.get('postId');",
+                                    "if (!postId) {",
+                                    "    throw new Error('postId пустой — сначала выполните POST /post/create');",
+                                    "}",
+                                    "pm.collectionVariables.set('postUpdateText', 'Обновлённый пост ' + Date.now());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PUT /post/delete/{id}",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/delete/{{postId}}",
+                        "description": "Удаление собственного поста. Bearer-токен из POST /login. Ответ 200. Чужой пост → 403."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('token');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — сначала выполните POST /login');",
+                                    "}",
+                                    "const postId = pm.variables.get('postId');",
+                                    "if (!postId) {",
+                                    "    throw new Error('postId пустой — сначала выполните POST /post/create');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.collectionVariables.set('postId', '');"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Друзья",
+            "item": [
+                {
+                    "name": "POST /user/register (пользователь-друг)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"first_name\": \"{{friendFirstName}}\",\n  \"second_name\": \"{{friendSecondName}}\",\n  \"birthdate\": \"1995-05-12\",\n  \"email\": \"{{friendEmail}}\",\n  \"gender\": \"female\",\n  \"biography\": \"Пользователь для проверки друзей\",\n  \"city\": \"Москва\",\n  \"password\": \"{{friendPassword}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/user/register",
+                        "description": "Создаёт второго пользователя для проверки /friend/set и /friend/delete. Ответ 200: `{ \"user_id\": \"<uuid>\" }`."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const stamp = Date.now().toString(36);",
+                                    "pm.collectionVariables.set('friendFirstName', 'Друг' + stamp.slice(-4));",
+                                    "pm.collectionVariables.set('friendSecondName', 'Тестов' + stamp.slice(-3));",
+                                    "pm.collectionVariables.set('friendEmail', `friend+${stamp}@vspace.loc`);",
+                                    "pm.collectionVariables.set('friendPassword', 'your-password');"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Has friend user_id', function () {",
+                                    "    pm.expect(json.user_id).to.be.a('string').and.not.empty;",
+                                    "});",
+                                    "pm.collectionVariables.set('friendUserId', json.user_id);",
+                                    "pm.environment.set('friendUserId', json.user_id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PUT /friend/set/{user_id}",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/friend/set/{{friendUserId}}",
+                        "description": "Добавляет друга. Дружба ненаправленная: одна связь видна обеим сторонам."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('token');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — сначала выполните POST /login');",
+                                    "}",
+                                    "const friendUserId = pm.variables.get('friendUserId');",
+                                    "if (!friendUserId) {",
+                                    "    throw new Error('friendUserId пустой — сначала выполните POST /user/register (пользователь-друг)');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PUT /friend/add/{user_id} (алиас)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/friend/add/{{friendUserId}}",
+                        "description": "Алиас /friend/set. Дружба ненаправленная: одна связь видна обеим сторонам."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('token');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — сначала выполните POST /login');",
+                                    "}",
+                                    "const friendUserId = pm.variables.get('friendUserId');",
+                                    "if (!friendUserId) {",
+                                    "    throw new Error('friendUserId пустой — сначала выполните POST /user/register (пользователь-друг)');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PUT /friend/delete/{user_id}",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/friend/delete/{{friendUserId}}",
+                        "description": "Удаляет дружбу независимо от того, кто её создал; связь исчезает у обоих."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('token');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — сначала выполните POST /login');",
+                                    "}",
+                                    "const friendUserId = pm.variables.get('friendUserId');",
+                                    "if (!friendUserId) {",
+                                    "    throw new Error('friendUserId пустой — сначала выполните POST /user/register (пользователь-друг)');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "GET /friend/list",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/friend/list",
+                        "description": "Друзья текущего пользователя (обе стороны связи). Публичные профили, массив."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('token');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — сначала выполните POST /login');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(pm.response.json()).to.be.an('array');",
+                                    "});"
                                 ],
                                 "type": "text/javascript"
                             }
@@ -700,6 +1095,149 @@
                                     "});",
                                     "pm.test('Empty array', function () {",
                                     "    pm.expect(pm.response.json()).to.eql([]);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PUT /friend/set/{user_id} — 400 нельзя добавить себя",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/friend/set/{{userId}}",
+                        "description": "Ожидается 400: `code` = 40001, сообщение «Нельзя добавить себя в друзья»."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const userId = pm.variables.get('userId');",
+                                    "if (!userId) {",
+                                    "    throw new Error('userId пустой — сначала выполните POST /user/register');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 400', function () {",
+                                    "    pm.response.to.have.status(400);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Validation error envelope', function () {",
+                                    "    pm.expect(json.code).to.eql(40001);",
+                                    "    pm.expect(json.message).to.be.a('string').and.not.empty;",
+                                    "    pm.expect(json).to.have.property('request_id');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PUT /post/delete/{id} — 404 пост не найден",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/delete/00000000-0000-0000-0000-000000000000",
+                        "description": "Ожидается 404: `code` = 40401, сообщение «Пост не найден»."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('token');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — сначала выполните POST /login');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 404', function () {",
+                                    "    pm.response.to.have.status(404);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Not found envelope', function () {",
+                                    "    pm.expect(json.code).to.eql(40401);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PUT /post/delete/{id} — 400 невалидный id",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/delete/not-a-uuid",
+                        "description": "Ожидается 400: `code` = 40001."
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.variables.get('token');",
+                                    "if (!token) {",
+                                    "    throw new Error('token пустой — сначала выполните POST /login');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 400', function () {",
+                                    "    pm.response.to.have.status(400);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Validation error envelope', function () {",
+                                    "    pm.expect(json.code).to.eql(40001);",
                                     "});"
                                 ],
                                 "type": "text/javascript"
@@ -1448,7 +1986,7 @@
                                 }
                             ]
                         },
-                        "description": "Лента постов. Bearer-токен — `loadToken` из «Нагрузочный тест: подготовка»."
+                        "description": "Лента постов: посты текущего пользователя и его друзей. Bearer-токен обязателен."
                     },
                     "event": [
                         {
@@ -1476,6 +2014,3168 @@
                                     "});",
                                     "pm.test('Feed is limited', function () {",
                                     "    pm.expect(json.length).to.be.at.most(10);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Нагрузочный тест: сценарий ленты (12 чтений + 3 записи)",
+            "description": "Прогон по loadtest/friends-postman.csv. CSV: baseUrl,userId,userShort,token,runId — одна строка на пользователя (50 строк). В Performance: VU data mapping = Randomized, число VU можно менять (20/50/100) без пересборки файла. Каждое чтение выполняется 4 раза подряд (оригинал + 3 дубликата): 12 групп чтений × 4 + 3 записи = 51 запрос на итерацию. Чтения: page 1 (limit=20), page 2, page 3, all (limit=100), page 48 (offset=940), page 49 (offset=960) и список друзей. Записи не дублируются. Тексты постов генерируются в pre-request скрипте папки.",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "const token = pm.variables.get('token');",
+                            "const userId = pm.variables.get('userId');",
+                            "const userShort = pm.variables.get('userShort');",
+                            "const runId = pm.variables.get('runId') || 'local';",
+                            "",
+                            "if (!token || !userId) {",
+                            "    throw new Error('token/userId пустые — загрузите loadtest/friends-postman.csv (baseUrl,userId,userShort,token,runId)');",
+                            "}",
+                            "",
+                            "// Уникальный суффикс итерации: время + случайные символы.",
+                            "const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);",
+                            "const prefix = `friends-load-${runId}-${userShort}-${stamp}`;",
+                            "",
+                            "['a', 'b', 'c'].forEach((suffix, index) => {",
+                            "    pm.variables.set(`postText${index + 1}`, `${prefix}-${suffix}`);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "item": [
+                {
+                    "name": "1. GET /post/feed (все посты, limit=100)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Чтение всех доступных постов ленты (API отдаёт максимум 100 за запрос)."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "1.1 GET /post/feed (все посты, limit=100) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Чтение всех доступных постов ленты (API отдаёт максимум 100 за запрос)."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "1.2 GET /post/feed (все посты, limit=100) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Чтение всех доступных постов ленты (API отдаёт максимум 100 за запрос)."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "1.3 GET /post/feed (все посты, limit=100) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Чтение всех доступных постов ленты (API отдаёт максимум 100 за запрос)."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2. GET /post/feed (страница 2, offset=20)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Страница 2: посты 21–40."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2.1 GET /post/feed (страница 2, offset=20) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Страница 2: посты 21–40."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2.2 GET /post/feed (страница 2, offset=20) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Страница 2: посты 21–40."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2.3 GET /post/feed (страница 2, offset=20) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Страница 2: посты 21–40."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "3. GET /post/feed (страница 3, offset=40)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Страница 3: посты 41–60."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "3.1 GET /post/feed (страница 3, offset=40) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Страница 3: посты 41–60."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "3.2 GET /post/feed (страница 3, offset=40) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Страница 3: посты 41–60."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "3.3 GET /post/feed (страница 3, offset=40) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Страница 3: посты 41–60."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "4. POST /post/create (запись #1)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"text\": \"{{postText1}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/create",
+                        "description": "Запись #1: текст генерируется в pre-request скрипте папки."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Has post id', function () {",
+                                    "    const json = pm.response.json();",
+                                    "    pm.expect(json.id).to.be.a('string').and.not.empty;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "5. GET /friend/list (чтение #5)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/friend/list",
+                        "description": "Список друзей текущего пользователя (дружба ненаправленная)."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('At least 5 friends', function () {",
+                                    "    pm.expect(json.length).to.be.at.least(5);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "5.1 GET /friend/list (чтение #5) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/friend/list",
+                        "description": "Список друзей текущего пользователя (дружба ненаправленная)."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('At least 5 friends', function () {",
+                                    "    pm.expect(json.length).to.be.at.least(5);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "5.2 GET /friend/list (чтение #5) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/friend/list",
+                        "description": "Список друзей текущего пользователя (дружба ненаправленная)."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('At least 5 friends', function () {",
+                                    "    pm.expect(json.length).to.be.at.least(5);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "5.3 GET /friend/list (чтение #5) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/friend/list",
+                        "description": "Список друзей текущего пользователя (дружба ненаправленная)."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('At least 5 friends', function () {",
+                                    "    pm.expect(json.length).to.be.at.least(5);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "6. GET /post/feed (страница 2, offset=20)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Повторное чтение страницы 2 после записи."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "6.1 GET /post/feed (страница 2, offset=20) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Повторное чтение страницы 2 после записи."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "6.2 GET /post/feed (страница 2, offset=20) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Повторное чтение страницы 2 после записи."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "6.3 GET /post/feed (страница 2, offset=20) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Повторное чтение страницы 2 после записи."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "7. GET /post/feed (все посты, limit=100)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Повторное чтение всей ленты."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "7.1 GET /post/feed (все посты, limit=100) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Повторное чтение всей ленты."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "7.2 GET /post/feed (все посты, limit=100) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Повторное чтение всей ленты."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "7.3 GET /post/feed (все посты, limit=100) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Повторное чтение всей ленты."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "8. GET /post/feed (страница 3, offset=40)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Повторное чтение страницы 3."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "8.1 GET /post/feed (страница 3, offset=40) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Повторное чтение страницы 3."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "8.2 GET /post/feed (страница 3, offset=40) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Повторное чтение страницы 3."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "8.3 GET /post/feed (страница 3, offset=40) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Повторное чтение страницы 3."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "9. POST /post/create (запись #2)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"text\": \"{{postText2}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/create",
+                        "description": "Запись #2: текст генерируется в pre-request скрипте папки."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Has post id', function () {",
+                                    "    const json = pm.response.json();",
+                                    "    pm.expect(json.id).to.be.a('string').and.not.empty;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "10. GET /post/feed (страница 3, offset=40)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Чтение страницы 3."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "10.1 GET /post/feed (страница 3, offset=40) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Чтение страницы 3."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "10.2 GET /post/feed (страница 3, offset=40) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Чтение страницы 3."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "10.3 GET /post/feed (страница 3, offset=40) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Чтение страницы 3."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "11. GET /post/feed (страница 2, offset=20)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Чтение страницы 2."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "11.1 GET /post/feed (страница 2, offset=20) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Чтение страницы 2."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "11.2 GET /post/feed (страница 2, offset=20) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Чтение страницы 2."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "11.3 GET /post/feed (страница 2, offset=20) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Чтение страницы 2."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "12. GET /post/feed (все посты, limit=100)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Финальное чтение всей ленты."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "12.1 GET /post/feed (все посты, limit=100) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Финальное чтение всей ленты."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "12.2 GET /post/feed (все посты, limit=100) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Финальное чтение всей ленты."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "12.3 GET /post/feed (все посты, limit=100) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Финальное чтение всей ленты."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "13. POST /post/create (запись #3)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"text\": \"{{postText3}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/create",
+                        "description": "Запись #3: текст генерируется в pre-request скрипте папки."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Has post id', function () {",
+                                    "    const json = pm.response.json();",
+                                    "    pm.expect(json.id).to.be.a('string').and.not.empty;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "14. GET /post/feed (страница 48, offset=940)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=940&limit=20",
+                        "description": "Глубокая страница 48: посты 941–960."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "14.1 GET /post/feed (страница 48, offset=940) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=940&limit=20",
+                        "description": "Глубокая страница 48: посты 941–960."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "14.2 GET /post/feed (страница 48, offset=940) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=940&limit=20",
+                        "description": "Глубокая страница 48: посты 941–960."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "14.3 GET /post/feed (страница 48, offset=940) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=940&limit=20",
+                        "description": "Глубокая страница 48: посты 941–960."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "15. GET /post/feed (страница 49, offset=960)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=960&limit=20",
+                        "description": "Глубокая страница 49: посты 961–980."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "15.1 GET /post/feed (страница 49, offset=960) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=960&limit=20",
+                        "description": "Глубокая страница 49: посты 961–980."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "15.2 GET /post/feed (страница 49, offset=960) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=960&limit=20",
+                        "description": "Глубокая страница 49: посты 961–980."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "15.3 GET /post/feed (страница 49, offset=960) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=960&limit=20",
+                        "description": "Глубокая страница 49: посты 961–980."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Нагрузочный тест: read-only (только чтения)",
+            "description": "Только лента, 6 ключей × 4 запроса (оригинал + 3 дубликата) = 24 запроса: page 1 (limit=20, offset=0), page 2 (offset=20), page 3 (offset=40), all (limit=100, offset=0), page 48 (offset=940), page 49 (offset=960). GET /friend/list сюда не входит. Для замера кеша: данные не меняются, ключи не инвалидируются.",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "const token = pm.variables.get('token');",
+                            "const userId = pm.variables.get('userId');",
+                            "const userShort = pm.variables.get('userShort');",
+                            "const runId = pm.variables.get('runId') || 'local';",
+                            "",
+                            "if (!token || !userId) {",
+                            "    throw new Error('token/userId пустые — загрузите loadtest/friends-postman.csv (baseUrl,userId,userShort,token,runId)');",
+                            "}",
+                            "",
+                            "// Уникальный суффикс итерации: время + случайные символы.",
+                            "const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);",
+                            "const prefix = `friends-load-${runId}-${userShort}-${stamp}`;",
+                            "",
+                            "['a', 'b', 'c'].forEach((suffix, index) => {",
+                            "    pm.variables.set(`postText${index + 1}`, `${prefix}-${suffix}`);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "item": [
+                {
+                    "name": "1. GET /post/feed (страница 1, limit=20)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=20",
+                        "description": "Первый экран ленты: 20 постов с offset=0."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "1.1 GET /post/feed (страница 1, limit=20) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=20",
+                        "description": "Первый экран ленты: 20 постов с offset=0."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "1.2 GET /post/feed (страница 1, limit=20) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=20",
+                        "description": "Первый экран ленты: 20 постов с offset=0."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "1.3 GET /post/feed (страница 1, limit=20) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=20",
+                        "description": "Первый экран ленты: 20 постов с offset=0."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2. GET /post/feed (страница 2, offset=20)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Страница 2: посты 21–40."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2.1 GET /post/feed (страница 2, offset=20) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Страница 2: посты 21–40."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2.2 GET /post/feed (страница 2, offset=20) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Страница 2: посты 21–40."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2.3 GET /post/feed (страница 2, offset=20) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=20&limit=20",
+                        "description": "Страница 2: посты 21–40."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "3. GET /post/feed (страница 3, offset=40)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Страница 3: посты 41–60."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "3.1 GET /post/feed (страница 3, offset=40) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Страница 3: посты 41–60."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "3.2 GET /post/feed (страница 3, offset=40) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Страница 3: посты 41–60."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "3.3 GET /post/feed (страница 3, offset=40) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=40&limit=20",
+                        "description": "Страница 3: посты 41–60."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "4. GET /post/feed (все посты, limit=100)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Широкое чтение: максимум, который отдаёт API."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "4.1 GET /post/feed (все посты, limit=100) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Широкое чтение: максимум, который отдаёт API."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "4.2 GET /post/feed (все посты, limit=100) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Широкое чтение: максимум, который отдаёт API."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "4.3 GET /post/feed (все посты, limit=100) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=0&limit=100",
+                        "description": "Широкое чтение: максимум, который отдаёт API."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 100', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(100);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "5. GET /post/feed (страница 48, offset=940)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=940&limit=20",
+                        "description": "Глубокая страница 48: посты 941–960."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "5.1 GET /post/feed (страница 48, offset=940) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=940&limit=20",
+                        "description": "Глубокая страница 48: посты 941–960."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "5.2 GET /post/feed (страница 48, offset=940) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=940&limit=20",
+                        "description": "Глубокая страница 48: посты 941–960."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "5.3 GET /post/feed (страница 48, offset=940) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=940&limit=20",
+                        "description": "Глубокая страница 48: посты 941–960."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "6. GET /post/feed (страница 49, offset=960)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=960&limit=20",
+                        "description": "Глубокая страница 49: посты 961–980."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "6.1 GET /post/feed (страница 49, offset=960) — дубликат 1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=960&limit=20",
+                        "description": "Глубокая страница 49: посты 961–980."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "6.2 GET /post/feed (страница 49, offset=960) — дубликат 2",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=960&limit=20",
+                        "description": "Глубокая страница 49: посты 961–980."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "6.3 GET /post/feed (страница 49, offset=960) — дубликат 3",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": "{{baseUrl}}/post/feed?offset=960&limit=20",
+                        "description": "Глубокая страница 49: посты 961–980."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "pm.test('X-Cache present', function () {",
+                                    "    pm.expect(pm.response.headers.get('X-Cache')).to.be.oneOf(['HIT', 'MISS', 'OFF']);",
+                                    "});",
+                                    "});",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is array', function () {",
+                                    "    pm.expect(json).to.be.an('array');",
+                                    "});",
+                                    "pm.test('Feed is limited to 20', function () {",
+                                    "    pm.expect(json.length).to.be.at.most(20);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Нагрузочный тест: write-only (только записи)",
+            "description": "Только записи: 3 × POST /post/create за итерацию, без чтений. Нужен для замера стоимости записи отдельно от чтений (сколько RPS держит БД и насколько запись искажает общий p95). Тексты генерируются в pre-request скрипте папки, токен берётся из CSV.",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "const token = pm.variables.get('token');",
+                            "const userId = pm.variables.get('userId');",
+                            "const userShort = pm.variables.get('userShort');",
+                            "const runId = pm.variables.get('runId') || 'local';",
+                            "",
+                            "if (!token || !userId) {",
+                            "    throw new Error('token/userId пустые — загрузите loadtest/friends-postman.csv (baseUrl,userId,userShort,token,runId)');",
+                            "}",
+                            "",
+                            "// Уникальный суффикс итерации: время + случайные символы.",
+                            "const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);",
+                            "const prefix = `friends-load-${runId}-${userShort}-${stamp}`;",
+                            "",
+                            "['a', 'b', 'c'].forEach((suffix, index) => {",
+                            "    pm.variables.set(`postText${index + 1}`, `${prefix}-${suffix}`);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "item": [
+                {
+                    "name": "1. POST /post/create (запись #1)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"text\": \"{{postText1}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/create",
+                        "description": "Запись #1: текст генерируется в pre-request скрипте папки."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Has post id', function () {",
+                                    "    const json = pm.response.json();",
+                                    "    pm.expect(json.id).to.be.a('string').and.not.empty;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2. POST /post/create (запись #2)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"text\": \"{{postText2}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/create",
+                        "description": "Запись #2: текст генерируется в pre-request скрипте папки."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Has post id', function () {",
+                                    "    const json = pm.response.json();",
+                                    "    pm.expect(json.id).to.be.a('string').and.not.empty;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "3. POST /post/create (запись #3)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"text\": \"{{postText3}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/post/create",
+                        "description": "Запись #3: текст генерируется в pre-request скрипте папки."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test('Has post id', function () {",
+                                    "    const json = pm.response.json();",
+                                    "    pm.expect(json.id).to.be.a('string').and.not.empty;",
                                     "});"
                                 ],
                                 "type": "text/javascript"

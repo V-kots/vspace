@@ -1,658 +1,1016 @@
 {
-  "openapi": "3.0.0",
-  "info": {
-    "title": "VSpace API",
-    "description": "Реализованные методы социальной сети VSpace (OTUS Highload Architect 1.2.0).\n\nPostman (каталог `api/postman/`): `VSpace.postman_collection.json`, окружение `VSpace.postman_environment.json`.",
-    "version": "1.2.0"
-  },
-  "servers": [
-    {
-      "url": "https://vspace.loc",
-      "description": "Локальное окружение"
-    }
-  ],
-  "paths": {
-    "/login": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Аутентификация",
-        "description": "Передача id пользователя (UUID из регистрации) и пароля. Возвращается Bearer-токен Sanctum.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
-              },
-              "example": {
-                "id": "e4d2e6b0-cde2-42c5-aac3-0b8316f21e58",
-                "password": "your-password"
-              }
+    "openapi": "3.0.0",
+    "info": {
+        "title": "VSpace API",
+        "description": "Реализованные методы социальной сети VSpace (OTUS Highload Architect 1.2.0).\n\nPostman (каталог `api/postman/`): `VSpace.postman_collection.json`, окружение `VSpace.postman_environment.json`.",
+        "version": "1.2.0"
+    },
+    "servers": [
+        {
+            "url": "https://vspace.loc",
+            "description": "Локальное окружение"
+        }
+    ],
+    "paths": {
+        "/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Аутентификация",
+                "description": "Передача id пользователя (UUID из регистрации) и пароля. Возвращается Bearer-токен Sanctum.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            },
+                            "example": {
+                                "id": "e4d2e6b0-cde2-42c5-aac3-0b8316f21e58",
+                                "password": "your-password"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Успешная аутентификация",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LoginResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "404": {
+                        "description": "Пользователь не найден",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
+                }
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": "Успешная аутентификация",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LoginResponse"
+        "/user/register": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Регистрация",
+                "description": "Создание нового пользователя. Пароль хранится в виде хеша.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterRequest"
+                            },
+                            "example": {
+                                "first_name": "Константин",
+                                "second_name": "Осипов",
+                                "birthdate": "1995-05-12",
+                                "email": "pilot@vspace.loc",
+                                "gender": "male",
+                                "biography": "Путешествия, музыка",
+                                "city": "Москва",
+                                "password": "your-password"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Успешная регистрация",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegisterResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
                 }
-              }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/400"
-          },
-          "404": {
-            "description": "Пользователь не найден",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/5xx"
-          },
-          "503": {
-            "$ref": "#/components/responses/5xx"
-          }
-        }
-      }
-    },
-    "/user/register": {
-      "post": {
-        "tags": [
-          "User"
-        ],
-        "summary": "Регистрация",
-        "description": "Создание нового пользователя. Пароль хранится в виде хеша.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegisterRequest"
-              },
-              "example": {
-                "first_name": "Константин",
-                "second_name": "Осипов",
-                "birthdate": "1995-05-12",
-                "email": "pilot@vspace.loc",
-                "gender": "male",
-                "biography": "Путешествия, музыка",
-                "city": "Москва",
-                "password": "your-password"
-              }
-            }
-          }
         },
-        "responses": {
-          "200": {
-            "description": "Успешная регистрация",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegisterResponse"
+        "/user/get/{id}": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Получение анкеты",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "UUID пользователя",
+                        "schema": {
+                            "$ref": "#/components/schemas/UserId"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное получение анкеты",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserProfile"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "404": {
+                        "description": "Анкета не найдена",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
                 }
-              }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/400"
-          },
-          "500": {
-            "$ref": "#/components/responses/5xx"
-          },
-          "503": {
-            "$ref": "#/components/responses/5xx"
-          }
+        },
+        "/user/search": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Поиск анкет",
+                "description": "Поиск по префиксу имени и фамилии одновременно (first_name LIKE '...%' AND second_name LIKE '...%'). Поиск регистронезависимый. Результат отсортирован по id анкеты. Поддерживает постраничную выдачу через offset/limit (по умолчанию 25).",
+                "parameters": [
+                    {
+                        "name": "first_name",
+                        "in": "query",
+                        "required": true,
+                        "description": "Начало имени (префикс)",
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "example": "Конст"
+                    },
+                    {
+                        "name": "last_name",
+                        "in": "query",
+                        "required": true,
+                        "description": "Начало фамилии (префикс)",
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "example": "Оси"
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "description": "Смещение от начала выборки",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "Размер страницы",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100,
+                            "default": 25
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список найденных анкет (может быть пустым)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/User"
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "X-Total-Count": {
+                                "description": "Общее количество анкет, подходящих под запрос (без учёта offset/limit)",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "example": 42
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
+                }
+            }
+        },
+        "/post/create": {
+            "post": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "text"
+                                ],
+                                "properties": {
+                                    "text": {
+                                        "$ref": "#/components/schemas/PostText"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Успешно создан пост",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PostId"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
+                }
+            }
+        },
+        "/post/get/{id}": {
+            "get": {
+                "parameters": [
+                    {
+                        "name": "id",
+                        "schema": {
+                            "$ref": "#/components/schemas/PostId"
+                        },
+                        "required": true,
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешно получен пост",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Post"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "404": {
+                        "description": "Пост не найден",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/post/feed": {
+            "get": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "offset",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Оффсет с которого начинать выдачу",
+                            "example": 100,
+                            "default": 0
+                        },
+                        "required": false,
+                        "in": "query"
+                    },
+                    {
+                        "name": "limit",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 1,
+                            "description": "Лимит, ограничивающий кол-во возвращенных сущностей",
+                            "example": 10,
+                            "default": 10,
+                            "maximum": 100
+                        },
+                        "required": false,
+                        "in": "query"
+                    },
+                    {
+                        "name": "author_user_id",
+                        "schema": {
+                            "$ref": "#/components/schemas/UserId"
+                        },
+                        "required": false,
+                        "in": "query",
+                        "description": "Вернуть только посты этого пользователя. Может быть другом или самим пользователем; для чужих авторов фильтр тоже работает."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Посты текущего пользователя и друзей либо посты указанного автора",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Post"
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "X-Cache": {
+                                "description": "Источник ответа при включённом кеше ленты (FEED_CACHE_ENABLED): HIT — из Redis, MISS — лента собрана из БД и закеширована, OFF — кеш выключен, фильтр по автору или fallback при ошибке Redis.",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "HIT",
+                                        "MISS",
+                                        "OFF"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
+                },
+                "description": "Лента постов. Без author_user_id возвращает посты текущего пользователя и его друзей (дружба ненаправленная). С author_user_id — только посты указанного пользователя (друг, сам пользователь или любой другой автор: дружба для фильтра не требуется)."
+            }
+        },
+        "/post/update": {
+            "put": {
+                "tags": [
+                    "Post"
+                ],
+                "summary": "Редактирование поста",
+                "description": "Изменять можно только собственный пост. Для чужого поста возвращается 403.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "id",
+                                    "text"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "$ref": "#/components/schemas/PostId"
+                                    },
+                                    "text": {
+                                        "$ref": "#/components/schemas/PostText"
+                                    }
+                                }
+                            },
+                            "example": {
+                                "id": "1d535fd6-7521-4cb1-aa6d-031be7123c4d",
+                                "text": "Обновлённый текст поста"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Успешно изменён пост"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
+                }
+            }
+        },
+        "/post/delete/{id}": {
+            "put": {
+                "tags": [
+                    "Post"
+                ],
+                "summary": "Удаление поста",
+                "description": "Удалять можно только собственный пост. Для чужого поста возвращается 403.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "UUID поста",
+                        "schema": {
+                            "$ref": "#/components/schemas/PostId"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешно удалён пост"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
+                }
+            }
+        },
+        "/friend/set/{user_id}": {
+            "put": {
+                "tags": [
+                    "Friend"
+                ],
+                "summary": "Добавление друга",
+                "description": "Добавляет пользователя в друзья. Дружба ненаправленная: достаточно одного вызова — связь сразу видна обеим сторонам. Повторное добавление идемпотентно.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "description": "UUID пользователя, которого добавляют в друзья",
+                        "schema": {
+                            "$ref": "#/components/schemas/UserId"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Пользователь успешно указал своего друга"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
+                }
+            }
+        },
+        "/friend/add/{user_id}": {
+            "put": {
+                "tags": [
+                    "Friend"
+                ],
+                "summary": "Добавление друга (синоним)",
+                "description": "Алиас PUT /friend/set/{user_id}: создаёт направленную связь текущий пользователь → user_id. Повторный вызов идемпотентен.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "description": "UUID пользователя, которого добавляют в друзья",
+                        "schema": {
+                            "$ref": "#/components/schemas/UserId"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Пользователь успешно указал своего друга"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
+                }
+            }
+        },
+        "/friend/delete/{user_id}": {
+            "put": {
+                "tags": [
+                    "Friend"
+                ],
+                "summary": "Удаление друга",
+                "description": "Удаляет дружбу с пользователем независимо от того, кто её создал. Связь исчезает у обеих сторон; повторное удаление идемпотентно.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "description": "UUID пользователя, которого удаляют из друзей",
+                        "schema": {
+                            "$ref": "#/components/schemas/UserId"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Пользователь успешно удалил из друзей пользователя"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
+                }
+            }
+        },
+        "/friend/list": {
+            "get": {
+                "tags": [
+                    "Friend"
+                ],
+                "summary": "Список друзей",
+                "description": "Публичные профили друзей текущего пользователя. Связь ненаправленная: учитываются и те, кого добавил текущий пользователь, и те, кто добавил его.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список друзей (может быть пустым)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/User"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/5xx"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/5xx"
+                    }
+                }
+            }
         }
-      }
     },
-    "/user/get/{id}": {
-      "get": {
-        "tags": [
-          "User"
-        ],
-        "summary": "Получение анкеты",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "UUID пользователя",
-            "schema": {
-              "$ref": "#/components/schemas/UserId"
-            }
-          }
-        ],
+    "components": {
         "responses": {
-          "200": {
-            "description": "Успешное получение анкеты",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
+            "400": {
+                "description": "Невалидные данные",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorBody"
+                        }
+                    }
                 }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/400"
-          },
-          "404": {
-            "description": "Анкета не найдена",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/5xx"
-          },
-          "503": {
-            "$ref": "#/components/responses/5xx"
-          }
-        }
-      }
-    },
-    "/user/search": {
-      "get": {
-        "tags": [
-          "User"
-        ],
-        "summary": "Поиск анкет",
-        "description": "Поиск по префиксу имени и фамилии одновременно (first_name LIKE '...%' AND second_name LIKE '...%'). Поиск регистронезависимый. Результат отсортирован по id анкеты. Индексы не используются.",
-        "parameters": [
-          {
-            "name": "first_name",
-            "in": "query",
-            "required": true,
-            "description": "Начало имени (префикс)",
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 100
             },
-            "example": "Конст"
-          },
-          {
-            "name": "last_name",
-            "in": "query",
-            "required": true,
-            "description": "Начало фамилии (префикс)",
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 100
-            },
-            "example": "Оси"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Список найденных анкет (может быть пустым)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/User"
-                  }
+            "5xx": {
+                "description": "Ошибка сервера",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorBody"
+                        }
+                    }
                 }
-              }
+            },
+            "401": {
+                "description": "Неавторизованный доступ",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorBody"
+                        }
+                    }
+                }
+            },
+            "403": {
+                "description": "Доступ запрещён",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorBody"
+                        }
+                    }
+                }
+            },
+            "404": {
+                "description": "Ресурс не найден",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorBody"
+                        }
+                    }
+                }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/400"
-          },
-          "500": {
-            "$ref": "#/components/responses/5xx"
-          },
-          "503": {
-            "$ref": "#/components/responses/5xx"
-          }
-        }
-      }
-    },
-    "/post/create": {
-      "post": {
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
+        },
+        "schemas": {
+            "UserId": {
+                "type": "string",
+                "format": "uuid",
+                "example": "e4d2e6b0-cde2-42c5-aac3-0b8316f21e58"
+            },
+            "BirthDate": {
+                "type": "string",
+                "format": "date",
+                "example": "1995-05-12"
+            },
+            "LoginRequest": {
                 "type": "object",
                 "required": [
-                  "text"
+                    "id",
+                    "password"
                 ],
                 "properties": {
-                  "text": {
-                    "$ref": "#/components/schemas/PostText"
-                  }
+                    "id": {
+                        "$ref": "#/components/schemas/UserId"
+                    },
+                    "password": {
+                        "type": "string",
+                        "example": "your-password"
+                    }
                 }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Успешно создан пост",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PostId"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/400"
-          },
-          "401": {
-            "$ref": "#/components/responses/401"
-          },
-          "500": {
-            "$ref": "#/components/responses/5xx"
-          },
-          "503": {
-            "$ref": "#/components/responses/5xx"
-          }
-        }
-      }
-    },
-    "/post/get/{id}": {
-      "get": {
-        "parameters": [
-          {
-            "name": "id",
-            "schema": {
-              "$ref": "#/components/schemas/PostId"
             },
-            "required": true,
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Успешно получен пост",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Post"
+            "LoginResponse": {
+                "type": "object",
+                "required": [
+                    "token"
+                ],
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "description": "Bearer-токен Sanctum",
+                        "example": "1|7NpUcPoWVk8u9JYLVEr3tmJ55T7Qb8xVViXIdvoJ57d1447b"
+                    },
+                    "user_id": {
+                        "$ref": "#/components/schemas/UserId",
+                        "description": "Дополнительное поле для SPA (не обязательно в клиентах OpenAPI)"
+                    }
                 }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/400"
-          },
-          "500": {
-            "$ref": "#/components/responses/5xx"
-          },
-          "503": {
-            "$ref": "#/components/responses/5xx"
-          },
-          "404": {
-            "description": "Пост не найден",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
+            },
+            "RegisterRequest": {
+                "type": "object",
+                "required": [
+                    "first_name",
+                    "second_name",
+                    "birthdate",
+                    "city",
+                    "password"
+                ],
+                "properties": {
+                    "first_name": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "example": "Имя"
+                    },
+                    "second_name": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "example": "Фамилия"
+                    },
+                    "birthdate": {
+                        "$ref": "#/components/schemas/BirthDate"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Необязательно. Если не передан — генерируется служебный адрес."
+                    },
+                    "gender": {
+                        "type": "string",
+                        "enum": [
+                            "male",
+                            "female",
+                            "other"
+                        ],
+                        "description": "Необязательно. По умолчанию other."
+                    },
+                    "biography": {
+                        "type": "string",
+                        "example": "Хобби, интересы и т.п."
+                    },
+                    "city": {
+                        "type": "string",
+                        "maxLength": 150,
+                        "example": "Москва"
+                    },
+                    "password": {
+                        "type": "string",
+                        "minLength": 8,
+                        "example": "your-password"
+                    }
                 }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/post/feed": {
-      "get": {
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "offset",
-            "schema": {
-              "type": "number",
-              "minimum": 0,
-              "description": "Оффсет с которого начинать выдачу",
-              "example": 100,
-              "default": 0
             },
-            "required": false,
-            "in": "query"
-          },
-          {
-            "name": "limit",
-            "schema": {
-              "type": "number",
-              "minimum": 1,
-              "description": "Лимит, ограничивающий кол-во возвращенных сущностей",
-              "example": 10,
-              "default": 10,
-              "maximum": 100
-            },
-            "required": false,
-            "in": "query"
-          },
-          {
-            "name": "author_user_id",
-            "schema": {
-              "$ref": "#/components/schemas/UserId"
-            },
-            "required": false,
-            "in": "query",
-            "description": "Фильтр по автору поста"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Успешно получены посты: свои и других пользователей",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Post"
-                  }
+            "RegisterResponse": {
+                "type": "object",
+                "required": [
+                    "user_id"
+                ],
+                "properties": {
+                    "user_id": {
+                        "$ref": "#/components/schemas/UserId"
+                    }
                 }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/400"
-          },
-          "401": {
-            "$ref": "#/components/responses/401"
-          },
-          "500": {
-            "$ref": "#/components/responses/5xx"
-          },
-          "503": {
-            "$ref": "#/components/responses/5xx"
-          }
-        },
-        "description": "Лента постов: свои и других пользователей"
-      }
-    }
-  },
-  "components": {
-    "responses": {
-      "400": {
-        "description": "Невалидные данные",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ErrorBody"
-            }
-          }
-        }
-      },
-      "5xx": {
-        "description": "Ошибка сервера",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ErrorBody"
-            }
-          }
-        }
-      },
-      "401": {
-        "description": "Неавторизованный доступ",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ErrorBody"
-            }
-          }
-        }
-      },
-      "404": {
-        "description": "Пост не найден",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ErrorBody"
-            }
-          }
-        }
-      }
-    },
-    "schemas": {
-      "UserId": {
-        "type": "string",
-        "format": "uuid",
-        "example": "e4d2e6b0-cde2-42c5-aac3-0b8316f21e58"
-      },
-      "BirthDate": {
-        "type": "string",
-        "format": "date",
-        "example": "1995-05-12"
-      },
-      "LoginRequest": {
-        "type": "object",
-        "required": [
-          "id",
-          "password"
-        ],
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/UserId"
-          },
-          "password": {
-            "type": "string",
-            "example": "your-password"
-          }
-        }
-      },
-      "LoginResponse": {
-        "type": "object",
-        "required": [
-          "token"
-        ],
-        "properties": {
-          "token": {
-            "type": "string",
-            "description": "Bearer-токен Sanctum",
-            "example": "1|7NpUcPoWVk8u9JYLVEr3tmJ55T7Qb8xVViXIdvoJ57d1447b"
-          },
-          "user_id": {
-            "$ref": "#/components/schemas/UserId",
-            "description": "Дополнительное поле для SPA (не обязательно в клиентах OpenAPI)"
-          }
-        }
-      },
-      "RegisterRequest": {
-        "type": "object",
-        "required": [
-          "first_name",
-          "second_name",
-          "birthdate",
-          "city",
-          "password"
-        ],
-        "properties": {
-          "first_name": {
-            "type": "string",
-            "maxLength": 100,
-            "example": "Имя"
-          },
-          "second_name": {
-            "type": "string",
-            "maxLength": 100,
-            "example": "Фамилия"
-          },
-          "birthdate": {
-            "$ref": "#/components/schemas/BirthDate"
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "description": "Необязательно. Если не передан — генерируется служебный адрес."
-          },
-          "gender": {
-            "type": "string",
-            "enum": [
-              "male",
-              "female",
-              "other"
-            ],
-            "description": "Необязательно. По умолчанию other."
-          },
-          "biography": {
-            "type": "string",
-            "example": "Хобби, интересы и т.п."
-          },
-          "city": {
-            "type": "string",
-            "maxLength": 150,
-            "example": "Москва"
-          },
-          "password": {
-            "type": "string",
-            "minLength": 8,
-            "example": "your-password"
-          }
-        }
-      },
-      "RegisterResponse": {
-        "type": "object",
-        "required": [
-          "user_id"
-        ],
-        "properties": {
-          "user_id": {
-            "$ref": "#/components/schemas/UserId"
-          }
-        }
-      },
-      "User": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/UserId"
-          },
-          "first_name": {
-            "type": "string",
-            "example": "Имя"
-          },
-          "second_name": {
-            "type": "string",
-            "example": "Фамилия"
-          },
-          "birthdate": {
-            "$ref": "#/components/schemas/BirthDate"
-          },
-          "biography": {
-            "type": "string",
-            "example": "Хобби, интересы и т.п."
-          },
-          "city": {
-            "type": "string",
-            "example": "Москва"
-          }
-        }
-      },
-      "ErrorBody": {
-        "type": "object",
-        "required": [
-          "message"
-        ],
-        "properties": {
-          "message": {
-            "type": "string",
-            "example": "Невалидные данные"
-          },
-          "request_id": {
-            "type": "string",
-            "description": "X-Request-Id / request_id middleware"
-          },
-          "code": {
-            "type": "integer",
-            "example": 40001
-          }
-        }
-      },
-      "Post": {
-        "type": "object",
-        "description": "Пост пользователя",
-        "required": [
-          "id",
-          "text",
-          "author_user_id"
-        ],
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/PostId"
-          },
-          "text": {
-            "$ref": "#/components/schemas/PostText"
-          },
-          "author_user_id": {
-            "$ref": "#/components/schemas/UserId"
-          },
-          "author": {
-            "type": "object",
-            "description": "Публичные данные автора поста",
-            "properties": {
-              "id": {
-                "$ref": "#/components/schemas/UserId"
-              },
-              "first_name": {
+            },
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "$ref": "#/components/schemas/UserId"
+                    },
+                    "first_name": {
+                        "type": "string",
+                        "example": "Имя"
+                    },
+                    "second_name": {
+                        "type": "string",
+                        "example": "Фамилия"
+                    },
+                    "birthdate": {
+                        "$ref": "#/components/schemas/BirthDate"
+                    },
+                    "biography": {
+                        "type": "string",
+                        "example": "Хобби, интересы и т.п."
+                    },
+                    "city": {
+                        "type": "string",
+                        "example": "Москва"
+                    }
+                }
+            },
+            "UserProfile": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/User"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "friends_count": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "example": 3,
+                                "description": "Сколько пользователей эта анкета добавила в друзья (направленная связь)."
+                            }
+                        }
+                    }
+                ]
+            },
+            "ErrorBody": {
+                "type": "object",
+                "required": [
+                    "message"
+                ],
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "Невалидные данные"
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "description": "X-Request-Id / request_id middleware"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "example": 40001
+                    }
+                }
+            },
+            "Post": {
+                "type": "object",
+                "description": "Пост пользователя",
+                "required": [
+                    "id",
+                    "text",
+                    "author_user_id"
+                ],
+                "properties": {
+                    "id": {
+                        "$ref": "#/components/schemas/PostId"
+                    },
+                    "text": {
+                        "$ref": "#/components/schemas/PostText"
+                    },
+                    "author_user_id": {
+                        "$ref": "#/components/schemas/UserId"
+                    },
+                    "author": {
+                        "type": "object",
+                        "description": "Публичные данные автора поста",
+                        "properties": {
+                            "id": {
+                                "$ref": "#/components/schemas/UserId"
+                            },
+                            "first_name": {
+                                "type": "string",
+                                "example": "Имя"
+                            },
+                            "second_name": {
+                                "type": "string",
+                                "example": "Фамилия"
+                            }
+                        }
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-11-07T18:00:00+00:00"
+                    }
+                }
+            },
+            "PostId": {
                 "type": "string",
-                "example": "Имя"
-              },
-              "second_name": {
+                "format": "uuid",
+                "description": "Идентификатор поста",
+                "example": "1d535fd6-7521-4cb1-aa6d-031be7123c4d"
+            },
+            "PostText": {
                 "type": "string",
-                "example": "Фамилия"
-              }
+                "maxLength": 5000,
+                "description": "Текст поста",
+                "example": "Lorem ipsum dolor sit amet"
             }
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-11-07T18:00:00+00:00"
-          }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "Токен из POST /login (для защищённых методов)"
+            }
         }
-      },
-      "PostId": {
-        "type": "string",
-        "format": "uuid",
-        "description": "Идентификатор поста",
-        "example": "1d535fd6-7521-4cb1-aa6d-031be7123c4d"
-      },
-      "PostText": {
-        "type": "string",
-        "maxLength": 5000,
-        "description": "Текст поста",
-        "example": "Lorem ipsum dolor sit amet"
-      }
-    },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "Токен из POST /login (для защищённых методов)"
-      }
     }
-  }
 }

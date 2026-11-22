@@ -80,6 +80,67 @@ class SearchUsersTest extends TestCase
             ->assertJson([]);
     }
 
+    public function test_search_supports_offset_and_limit(): void
+    {
+        $users = User::factory()->count(3)->create([
+            'first_name' => 'Иван',
+            'second_name' => 'Петров',
+        ]);
+
+        $ids = $users->pluck('id')->sort()->values();
+
+        $firstPage = $this->getJson('/user/search?'.http_build_query([
+            'first_name' => 'Иван',
+            'last_name' => 'Петров',
+            'offset' => 0,
+            'limit' => 2,
+        ]));
+
+        $firstPage->assertOk()->assertJsonCount(2);
+        $firstPage->assertHeader('X-Total-Count', '3');
+        $this->assertSame($ids[0], $firstPage->json('0.id'));
+        $this->assertSame($ids[1], $firstPage->json('1.id'));
+
+        $secondPage = $this->getJson('/user/search?'.http_build_query([
+            'first_name' => 'Иван',
+            'last_name' => 'Петров',
+            'offset' => 2,
+            'limit' => 2,
+        ]));
+
+        $secondPage->assertOk()->assertJsonCount(1);
+        $secondPage->assertHeader('X-Total-Count', '3');
+        $this->assertSame($ids[2], $secondPage->json('0.id'));
+    }
+
+    public function test_search_returns_25_results_by_default(): void
+    {
+        User::factory()->count(26)->create([
+            'first_name' => 'Иван',
+            'second_name' => 'Петров',
+        ]);
+
+        $this->getJson('/user/search?first_name=Иван&last_name=Петров')
+            ->assertOk()
+            ->assertHeader('X-Total-Count', '26')
+            ->assertJsonCount(25);
+    }
+
+    public function test_search_rejects_invalid_pagination(): void
+    {
+        $this->assertApiError(
+            $this->getJson('/user/search?first_name=Иван&last_name=Петров&limit=0'),
+            400,
+            ApiError::CODE_VALIDATION,
+        );
+
+        $this->assertApiError(
+            $this->getJson('/user/search?first_name=Иван&last_name=Петров&offset=-1'),
+            400,
+            ApiError::CODE_VALIDATION,
+        );
+    }
+
     public function test_search_requires_both_query_parameters(): void
     {
         $this->assertApiError(

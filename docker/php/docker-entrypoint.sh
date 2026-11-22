@@ -42,13 +42,18 @@ if [ "${xdebug_mode}" = "off" ] || [ -z "${xdebug_mode}" ]; then
     mv "${xdebug_ini}" "${xdebug_ini_off}"
   fi
   rm -f /usr/local/etc/php/conf.d/97-xdebug-fpm.ini
+  rm -f /usr/local/etc/php/conf.d/zz-xdebug-fpm.ini
 else
   if [ -f "${xdebug_ini_off}" ]; then
     mv "${xdebug_ini_off}" "${xdebug_ini}"
   fi
-  cat > /usr/local/etc/php/conf.d/97-xdebug-fpm.ini <<'EOF'
+  # zz-*, чтобы перекрыть 99-xdebug.ini с start_with_request=trigger:
+  # файлы conf.d читаются по алфавиту, иначе debug не стартует сам.
+  rm -f /usr/local/etc/php/conf.d/97-xdebug-fpm.ini
+  cat > /usr/local/etc/php/conf.d/zz-xdebug-fpm.ini <<EOF
 ; XDEBUG_MODE!=off — step debug на запрос (короткий connect timeout)
 [xdebug]
+xdebug.mode=${xdebug_mode}
 xdebug.start_with_request=yes
 xdebug.connect_timeout_ms=150
 EOF

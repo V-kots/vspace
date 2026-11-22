@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api, { extractErrorMessage } from '../api/client';
 import AppShell from '../components/AppShell';
@@ -12,8 +12,45 @@ export default function Profile() {
     const [posts, setPosts] = useState([]);
     const [postsLoading, setPostsLoading] = useState(false);
     const [postsError, setPostsError] = useState('');
+    const [friendStatus, setFriendStatus] = useState('loading');
+    const [friendBusy, setFriendBusy] = useState(false);
+    const [friendError, setFriendError] = useState('');
+    const tabsRef = useRef(null);
     const currentUserId = localStorage.getItem('vspace_user_id') || '';
     const isAuthenticated = Boolean(localStorage.getItem('vspace_token'));
+    const isOwnProfile = currentUserId === id;
+
+    useEffect(() => {
+        setFriendError('');
+        setFriendStatus(isAuthenticated && !isOwnProfile ? 'loading' : 'none');
+
+        if (!isAuthenticated || isOwnProfile) {
+            return undefined;
+        }
+
+        let cancelled = false;
+
+        async function loadFriendStatus() {
+            try {
+                const { data } = await api.get('/friend/list');
+
+                if (!cancelled) {
+                    setFriendStatus(data.some((friend) => friend.id === id) ? 'friend' : 'none');
+                }
+            } catch {
+                if (!cancelled) {
+                    // Статус не критичен: по умолчанию показываем «Добавить в друзья».
+                    setFriendStatus('none');
+                }
+            }
+        }
+
+        loadFriendStatus();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [id, isAuthenticated, isOwnProfile]);
 
     useEffect(() => {
         async function load() {
@@ -66,6 +103,39 @@ export default function Profile() {
         };
     }, [id, isAuthenticated]);
 
+    async function addFriend() {
+        setFriendBusy(true);
+        setFriendError('');
+
+        try {
+            await api.put(`/friend/set/${id}`);
+            setFriendStatus('friend');
+        } catch (error) {
+            setFriendError(extractErrorMessage(error));
+        } finally {
+            setFriendBusy(false);
+        }
+    }
+
+    async function removeFriend() {
+        setFriendBusy(true);
+        setFriendError('');
+
+        try {
+            await api.put(`/friend/delete/${id}`);
+            setFriendStatus('none');
+        } catch (error) {
+            setFriendError(extractErrorMessage(error));
+        } finally {
+            setFriendBusy(false);
+        }
+    }
+
+    function openPostsTab() {
+        setTab('posts');
+        tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     if (serverError && !profile) {
         return (
             <div className="shell">
@@ -93,15 +163,72 @@ export default function Profile() {
                         <p className="muted profile-location">{profile.city}</p>
                         <p className="profile-bio">{profile.biography || 'Интересы пока не указаны.'}</p>
                         <div className="profile-stats">
-                            <div><strong>{posts.length}</strong><span className="muted">Постов</span></div>
-                            <div><strong>0</strong><span className="muted">Подписчиков</span></div>
-                            <div><strong>0</strong><span className="muted">Подписок</span></div>
+                            <button
+                                type="button"
+                                className="profile-stat-link profile-stat-button"
+                                onClick={openPostsTab}
+                            >
+                                <strong>{posts.length}</strong>
+                                <span className="muted">Постов</span>
+                            </button>
+                            <div>
+                                {isOwnProfile ? (
+                                    <Link className="profile-stat-link" to="/friends">
+                                        <strong>{profile.friends_count ?? 0}</strong>
+                                        <span className="muted">Друзей</span>
+                                    </Link>
+                                ) : (
+                                    <>
+                                        <strong>{profile.friends_count ?? 0}</strong>
+                                        <span className="muted">Друзей</span>
+                                    </>
+                                )}
+                            </div>
+                            {/* <div><strong>0</strong><span className="muted">Подписчиков</span></div> */}
+                            {/* <div><strong>0</strong><span className="muted">Подписок</span></div> */}
                         </div>
+                        {isAuthenticated && !isOwnProfile ? (
+                            <div className="nav-row profile-actions">
+                                {friendStatus === 'loading' ? (
+                                    <button
+                                        className="btn btn-outline btn-sm"
+                                        type="button"
+                                        disabled
+                                    >
+                                        ...
+                                    </button>
+                                ) : friendStatus === 'friend' ? (
+                                    <button
+                                        className="btn btn-ghost btn-sm"
+                                        type="button"
+                                        onClick={removeFriend}
+                                        disabled={friendBusy}
+                                    >
+                                        {friendBusy ? 'Удаляем...' : 'Удалить из друзей'}
+                                    </button>
+                                ) : (
+                                    <button
+                                        className="btn btn-gradient btn-sm"
+                                        type="button"
+                                        onClick={addFriend}
+                                        disabled={friendBusy}
+                                    >
+                                        {friendBusy ? 'Добавляем...' : 'Добавить в друзья'}
+                                    </button>
+                                )}
+                            </div>
+                        ) : null}
+                        {friendError ? <div className="alert alert-error">{friendError}</div> : null}
+                        {isAuthenticated && isOwnProfile ? (
+                            <p className="muted profile-actions">
+                                Чтобы добавить друга, найдите его в <Link className="link" to="/search">поиске анкет</Link> и нажмите «В друзья».
+                            </p>
+                        ) : null}
                     </div>
                 </div>
             </div>
 
-            <div className="profile-tabs">
+            <div className="profile-tabs" ref={tabsRef}>
                 <button type="button" className={tab === 'about' ? 'active' : ''} onClick={() => setTab('about')}>Обо мне</button>
                 <button type="button" className={tab === 'posts' ? 'active' : ''} onClick={() => setTab('posts')}>Посты</button>
                 <button type="button" className={tab === 'photos' ? 'active' : ''} onClick={() => setTab('photos')}>Фото</button>
@@ -134,7 +261,15 @@ export default function Profile() {
                         </div>
                     ) : null}
                     {posts.map((post) => (
-                        <PostCard key={post.id} post={post} currentUserId={currentUserId} />
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            currentUserId={currentUserId}
+                            onUpdated={(updated) => setPosts((current) => current.map((item) => (
+                                item.id === updated.id ? updated : item
+                            )))}
+                            onDeleted={(postId) => setPosts((current) => current.filter((item) => item.id !== postId))}
+                        />
                     ))}
                 </div>
             )}

@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import api, { extractErrorMessage, setAuthToken } from '../api/client';
 import AppShell from '../components/AppShell';
 import PostCard from '../components/PostCard';
-import UserSearchForm from '../components/UserSearchForm';
+
+const HOME_FEED_LIMIT = 5;
 
 export default function Cabinet() {
     const navigate = useNavigate();
@@ -32,9 +33,12 @@ export default function Cabinet() {
 
     async function loadFeed() {
         setPostsLoading(true);
+        setPostError('');
 
         try {
-            const { data } = await api.get('/post/feed', { params: { limit: 30 } });
+            const { data } = await api.get('/post/feed', {
+                params: { offset: 0, limit: HOME_FEED_LIMIT },
+            });
             setPosts(data);
         } catch (error) {
             setPostError(extractErrorMessage(error));
@@ -77,10 +81,13 @@ export default function Cabinet() {
 
     return (
         <AppShell userId={userId}>
-            <div className="feed-search desktop-only">
-                <UserSearchForm
-                    onSubmit={(first, last) => navigate(`/search?first_name=${encodeURIComponent(first)}&last_name=${encodeURIComponent(last)}`)}
-                />
+            <div className="cabinet-card panel">
+                <h2 className="section-title">Личный кабинет</h2>
+                <p className="muted">ID для входа и API:</p>
+                <code className="user-id-value">{userId}</code>
+                <div className="nav-row">
+                    <Link className="btn btn-gradient" to={`/profile/${userId}`}>Моя анкета</Link>
+                </div>
             </div>
 
             <form className="composer panel" onSubmit={onCreatePost}>
@@ -103,6 +110,10 @@ export default function Cabinet() {
 
             {postError ? <div className="alert alert-error">{postError}</div> : null}
 
+            <div className="feed-head">
+                <h2 className="section-title">Последние посты</h2>
+            </div>
+
             {postsLoading ? <div className="app-loading muted">Загружаем посты...</div> : null}
 
             {!postsLoading && posts.length === 0 ? (
@@ -113,18 +124,23 @@ export default function Cabinet() {
 
             <div className="post-feed">
                 {posts.map((post) => (
-                    <PostCard key={post.id} post={post} currentUserId={userId} />
+                    <PostCard
+                        key={post.id}
+                        post={post}
+                        currentUserId={userId}
+                        onUpdated={(updated) => setPosts((current) => current.map((item) => (
+                            item.id === updated.id ? updated : item
+                        )))}
+                        onDeleted={(postId) => setPosts((current) => current.filter((item) => item.id !== postId))}
+                    />
                 ))}
             </div>
 
-            <div className="cabinet-card panel">
-                <h2 className="section-title">Личный кабинет</h2>
-                <p className="muted">ID для входа и API:</p>
-                <code className="user-id-value">{userId}</code>
-                <div className="nav-row">
-                    <Link className="btn btn-gradient" to={`/profile/${userId}`}>Моя анкета</Link>
-                </div>
-            </div>
+            {!postsLoading && posts.length > 0 ? (
+                <Link className="feed-more" to="/posts">
+                    Смотреть все посты
+                </Link>
+            ) : null}
         </AppShell>
     );
 }

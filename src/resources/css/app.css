@@ -492,6 +492,35 @@ textarea.input-invalid:focus {
     place-items: center;
 }
 
+.infinite-sentinel {
+    display: flex;
+    justify-content: center;
+    padding: 1rem 0 1.5rem;
+}
+
+.infinite-loader {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.infinite-loader::before {
+    content: '';
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: infinite-spin 0.7s linear infinite;
+}
+
+@keyframes infinite-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .app-layout {
     min-height: 100vh;
     display: flex;
@@ -735,10 +764,6 @@ textarea.input-invalid:focus {
     font-weight: 700;
 }
 
-.feed-search {
-    margin-bottom: 0.25rem;
-}
-
 .search-input {
     border-radius: 999px;
     padding-left: 1.1rem;
@@ -800,11 +825,25 @@ textarea.input-invalid:focus {
 
 .search-result {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.85rem;
     text-decoration: none;
     color: inherit;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.search-result-link {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    flex: 1;
+    min-width: 0;
+    text-decoration: none;
+    color: inherit;
+}
+
+.search-result-action {
+    flex: 0 0 auto;
 }
 
 .search-result:hover {
@@ -897,7 +936,8 @@ textarea.input-invalid:focus {
 .post-card {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.85rem;
+    border-radius: 16px;
 }
 
 .post-header {
@@ -906,25 +946,115 @@ textarea.input-invalid:focus {
     align-items: center;
 }
 
+.post-head-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
 .post-avatar {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.75rem;
+    height: 2.75rem;
     border-radius: 50%;
-    background: rgba(65, 130, 255, 0.15);
-    color: var(--accent);
+    background: var(--gradient);
+    color: #fff;
     display: grid;
     place-items: center;
     font-weight: 700;
+    font-size: 1.05rem;
+    flex: 0 0 auto;
+    box-shadow: 0 4px 12px rgba(65, 130, 255, 0.25);
 }
 
 .post-meta {
     display: block;
-    font-size: 0.8125rem;
+    font-size: 0.78rem;
 }
 
 .post-text {
     margin: 0;
-    line-height: 1.55;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.post-menu-wrap {
+    position: relative;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.post-menu-btn {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--muted);
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.post-menu-btn:hover,
+.post-menu-btn[aria-expanded='true'] {
+    background: var(--bg);
+    color: var(--text);
+}
+
+.post-menu {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    right: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 11rem;
+    padding: 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.post-menu button {
+    padding: 0.5rem 0.65rem;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.post-menu button:hover {
+    background: var(--bg);
+}
+
+.post-menu button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.post-menu .post-menu-danger {
+    color: var(--danger);
+}
+
+.post-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.post-actions button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 .post-actions {
@@ -1028,7 +1158,8 @@ textarea.input-invalid:focus {
     gap: 1.5rem;
 }
 
-.profile-stats div {
+.profile-stats div,
+.profile-stats button {
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
@@ -1036,6 +1167,32 @@ textarea.input-invalid:focus {
 
 .profile-stats strong {
     font-size: 1.125rem;
+}
+
+.profile-stat-link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.profile-stat-link:hover span {
+    text-decoration: underline;
+}
+
+.profile-stat-button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+
+.profile-actions {
+    margin-top: 1rem;
 }
 
 .profile-tabs {
@@ -1224,10 +1381,6 @@ textarea.input-invalid:focus {
     .app-widgets.desktop-only {
         display: flex;
     }
-
-    .feed-search.desktop-only {
-        display: block;
-    }
 }
 
 /* ——— Validation & form alerts ——— */
@@ -1376,6 +1529,40 @@ textarea.input-invalid:focus {
 }
 
 /* Posts */
+.feed-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.feed-head .section-title {
+    margin: 0;
+}
+
+.feed-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    box-shadow: var(--shadow-sm);
+    transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.feed-more:hover {
+    background: var(--surface);
+    color: var(--accent);
+    box-shadow: var(--shadow);
+}
+
 .post-feed {
     display: flex;
     flex-direction: column;
@@ -1405,9 +1592,14 @@ textarea.input-invalid:focus {
 }
 
 .post-author-link {
+    display: block;
+    overflow: hidden;
     color: inherit;
-    font-weight: 700;
+    font-size: 0.95rem;
+    font-weight: 600;
     text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .post-author-link:hover {

@@ -5,22 +5,21 @@ import { setAuthToken } from '../api/client';
 
 function mainNav(profilePath) {
     return [
-        { to: '/cabinet', label: 'Главная', icon: 'home' },
         { to: '/search', label: 'Поиск', icon: 'search' },
+        { to: '/cabinet', label: 'Главная', icon: 'home' },
         { to: profilePath, label: 'Профиль', icon: 'profile' },
-        // { to: '/cabinet', label: 'Лента', icon: 'feed', end: false },
-        // { to: '/cabinet', label: 'Сообщения', icon: 'messages', badge: 3 },
-        // { to: '/cabinet', label: 'Друзья', icon: 'friends' },
-        // { to: '/cabinet', label: 'Сообщества', icon: 'groups' },
+        { to: '/friends', label: 'Друзья', icon: 'friends' },
+        { to: '/posts', label: 'Посты', icon: 'feed' },
     ];
 }
 
 function drawerNav(profilePath) {
     return [
-        { to: '/cabinet', label: 'Главная', icon: 'home' },
         { to: '/search', label: 'Поиск', icon: 'search' },
+        { to: '/cabinet', label: 'Главная', icon: 'home' },
         { to: profilePath, label: 'Профиль', icon: 'profile' },
-        // { to: '/cabinet', label: 'Друзья', icon: 'friends' },
+        { to: '/friends', label: 'Друзья', icon: 'friends' },
+        { to: '/posts', label: 'Посты', icon: 'feed' },
         // { to: '/cabinet', label: 'Сообщества', icon: 'groups' },
         { to: '/cabinet', label: 'Закладки', icon: 'bookmark' },
         { to: '/cabinet', label: 'Настройки', icon: 'settings' },

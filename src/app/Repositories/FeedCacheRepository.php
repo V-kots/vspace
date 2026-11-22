@@ -10,7 +10,7 @@ use Throwable;
 /**
  * Лента постов: кешируемая (Redis ZSET на пользователя) или обычный запрос в БД.
  *
- * Кеш включается POST_CACHE_ENABLED. В ZSET хранятся только id постов,
+ * Кеш включается FEED_CACHE_ENABLED. В ZSET хранятся только id постов,
  * ограничение — последние feed.cache.size записей.
  */
 class FeedCacheRepository

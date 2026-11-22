@@ -182,7 +182,7 @@ docker compose --env-file .env.docker exec -T postgres psql -U vspace -d vspace 
   "select author_user_id, count(*), count(distinct text) from posts where text like 'friends-load-<runId>-%' group by 1 order by 2 desc;"
 ```
 
-**Кеш ленты постов (FEED_CACHE_ENABLED).** В API реализован кеш только для ленты постов: Redis ZSET `feed:{userId}` с последними `FEED_CACHE_SIZE` (по умолчанию 1000) id постов, обновляется при создании/удалении поста и изменении дружбы. Включается переменной окружения в `src/.env`:
+**Кеш ленты постов (FEED_CACHE_ENABLED).** В API кешируется лента (ZSET id постов); тела постов — отдельно, при `POST_CACHE_ENABLED`. Детали: Redis ZSET `feed:{userId}` с последними `FEED_CACHE_SIZE` (по умолчанию 1000) id постов, обновляется при создании/удалении поста и изменении дружбы. Включается переменной окружения в `src/.env`:
 
 ```
 FEED_CACHE_ENABLED=true

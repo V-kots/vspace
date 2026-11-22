@@ -403,14 +403,16 @@ Redis DB 1 (соединение `cache`, префиксы `vspace-database-` + 
 - `feed:page:{userId}:0:5` — готовая страница главной (5 постов с авторами).
 - `friends:ids:{userId}` — id друзей.
 - `friends:profiles:{userId}` — публичные профили друзей для `/friend/list`.
-- `auth:token:{sha256}` — модель токена Sanctum с загруженным пользователем.
+- `auth:token:{sha256}` — токен и пользователь (сохраняются массивами, модель собирается без запроса в БД).
 - `post:{postId}` — JSON поста с автором (только при `POST_CACHE_ENABLED=true`).
+
+`GET /post/feed` отдаёт заголовок `X-Cache`: `HIT` — данные из Redis, `MISS` — лента собрана из БД и закеширована, `OFF` — кеш выключен, задан `author_user_id` или Redis недоступен. При любой ошибке Redis чтение уходит в БД, создание поста не падает.
 
 **Инвалидация**
 
 - Создание поста — `ZADD` в ленты автора и друзей, trim до `FEED_CACHE_SIZE`, сброс `feed:page:*` у тех же пользователей.
 - Удаление поста — `ZREM` из тех же лент, сброс страниц и `post:{id}`.
-- Редактирование поста — сброс `post:{id}`.
+- Редактирование поста — сброс `post:{id}` и `feed:page:*` у автора и друзей.
 - Добавление/удаление дружбы — удаление лент и страниц обоих пользователей, сброс `friends:ids` и `friends:profiles` у обоих.
 - Удаление или изменение токена — сброс `auth:token:*` по хешу. Массовое удаление через query builder события модели не вызывает, там кеш живёт до TTL.
 
@@ -580,9 +582,9 @@ docker compose restart php
 |----------------------------|--------------|--------|
 | `PHP_OPCACHE_VALIDATE_TIMESTAMPS` | `0` | `0` — без `stat()` на каждый hit (load/prod); `1` — видеть правки PHP без rebuild |
 | `PHP_OPCACHE_JIT` | `1255` | `0` — выключить JIT |
-| `PHP_OPCACHE_PRELOAD` | `1` | Preload `src/bootstrap/preload.php` (нужен `vendor/`) |
+| `PHP_OPCACHE_PRELOAD` | `1` (`0` при JIT) | Preload `src/bootstrap/preload.php` (нужен `vendor/`). При включённом JIT entrypoint выключает preload: их сочетание роняет php-fpm в SIGSEGV |
 
-Перед нагрузкой: **`XDEBUG_MODE=off`** (расширение xdebug не грузится → включается **JIT**), `composer install --optimize-autoloader --no-dev` (по желанию), затем `docker compose up -d --build php` (preload подхватывается при старте FPM master).
+Перед нагрузкой: **`XDEBUG_MODE=off`** (расширение xdebug не грузится → включается **JIT**, preload при этом отключается автоматически), `composer install --optimize-autoloader --no-dev` (по желанию), затем `docker compose up -d --build php` (preload подхватывается при старте FPM master).
 
 Проверка:
 

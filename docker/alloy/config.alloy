@@ -103,18 +103,17 @@ loki.process "docker_logs" {
 
 	stage.docker {}
 
-	// Laravel JSON → log_type=app
+	// Laravel JSON → log_type=app.
+	// Селекторы JSON/не-JSON не пересекаются: раньше здесь стоял stage.drop,
+	// который удалял строку из всего пайплайна, из-за чего логи php не доходили до Loki.
 	stage.match {
-		selector = "{service=\"php\"}"
-
-		stage.drop {
-			expression = "^[^{]"
-		}
+		selector = "{service=\"php\"} |~ \"^\\\\s*\\\\{\""
 
 		stage.json {
 			expressions = {
-				level   = "level_name",
+				level   = "level",
 				channel = "channel",
+				env     = "env",
 			}
 		}
 
@@ -128,17 +127,14 @@ loki.process "docker_logs" {
 			values = {
 				level   = "",
 				channel = "",
+				env     = "",
 			}
 		}
 	}
 
 	// PHP-FPM stderr / access (не JSON)
 	stage.match {
-		selector = "{service=\"php\"}"
-
-		stage.drop {
-			expression = "^\\s*\\{"
-		}
+		selector = "{service=\"php\"} !~ \"^\\\\s*\\\\{\""
 
 		stage.regex {
 			expression = "^(?P<line>.*)"
